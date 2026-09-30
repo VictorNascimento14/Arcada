@@ -7,6 +7,8 @@ import { formatarReais } from "@/dominio";
 import { dataBR } from "@/modulos/pacientes/exibicao";
 import { GlassCard, diaISO } from "@/ui";
 
+import BaixaDaParcela from "./BaixaDaParcela";
+import { ROTULO_DA_FORMA } from "./formas";
 import { situacaoDaParcela } from "./situacao";
 import SituacaoDaParcelaBadge from "./SituacaoDaParcelaBadge";
 
@@ -35,13 +37,19 @@ export default function AbaFinanceiro({ pacienteId }: { pacienteId: string }) {
       ) : (
         <ul className="mt-4 divide-y divide-foreground-950/[0.06]">
           {doPaciente.map((l) => (
-            <li key={l.id} className="flex items-center gap-3 py-3">
-              <div className="min-w-0 flex-1">
+            <li key={l.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 py-3">
+              <div className="min-w-0 flex-1 basis-40">
                 <p className="font-semibold text-foreground-950">Vencimento em {dataBR(l.vencimento)}</p>
-                {l.pagoEm && <p className="text-sm text-foreground-500">Pago em {dataBR(l.pagoEm)}</p>}
+                {l.pagoEm && (
+                  <p className="text-sm text-foreground-500">
+                    Pago em {dataBR(l.pagoEm)}
+                    {l.forma && ` · ${ROTULO_DA_FORMA[l.forma]}`}
+                  </p>
+                )}
               </div>
               <SituacaoDaParcelaBadge situacao={situacaoDaParcela(l, hoje)} />
               <p className="font-semibold tabular-nums text-foreground-950">{formatarReais(l.valor)}</p>
+              {l.pagoEm === undefined && <BaixaDaParcela parcela={l} />}
             </li>
           ))}
         </ul>

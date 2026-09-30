@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { lancamentos, pacientes } from "@/dados/colecoes";
@@ -41,12 +41,30 @@ describe("contas a receber", () => {
       ["Bruno Exemplo", "Vencimento em 01/10/2026", "Vencida", reais(1_000)],
       ["Bruno Exemplo", "Vencimento em 15/10/2026", "Vence hoje", reais(2_000)],
       ["Ana Exemplo", "Vencimento em 15/11/2026", "A vencer", reais(3_000)],
-      ["Ana Exemplo", "Vencimento em 10/09/2026 · pago em 09/09/2026", "Paga", reais(5_000)],
+      ["Ana Exemplo", "Vencimento em 10/09/2026 · pago em 09/09/2026 · Pix", "Paga", reais(5_000)],
     ];
     expect(linhas).toHaveLength(esperado.length);
     linhas.forEach((linha, i) => {
       for (const texto of esperado[i]) expect(within(linha).getByText(texto)).toBeTruthy();
     });
+    expect(screen.getAllByRole("button", { name: /^Dar baixa/ })).toHaveLength(3); // a paga não tem o botão
+  });
+
+  it("dar baixa leva a parcela para o fim como paga, com o dia e a forma, e o resumo deixa de contá-la", () => {
+    lancamentos.substituirTudo([parcela("a", "ana", 3_000, "2026-10-20"), parcela("b", "bruno", 2_000, "2026-11-20")]);
+    render(<ContasAReceber />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Dar baixa na parcela de 20/10/2026 de Ana Exemplo" }));
+    const dialogo = within(screen.getByRole("dialog"));
+    fireEvent.change(dialogo.getByLabelText("Forma de pagamento"), { target: { value: "pix" } });
+    fireEvent.click(dialogo.getByRole("button", { name: "Dar baixa" }));
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+    const [aberta, paga] = screen.getAllByRole("listitem");
+    expect(within(aberta).getByText("Bruno Exemplo")).toBeTruthy();
+    for (const texto of ["Ana Exemplo", "Vencimento em 20/10/2026 · pago em 15/10/2026 · Pix", "Paga"]) expect(within(paga).getByText(texto)).toBeTruthy();
+    expect(within(paga).queryByRole("button")).toBeNull();
+    expect(screen.getByText(`1 parcela em aberto, somando ${reais(2_000)}`)).toBeTruthy();
   });
 
   it("resume quantas parcelas estão em aberto e quanto somam, sem contar as pagas", () => {

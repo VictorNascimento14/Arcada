@@ -55,7 +55,7 @@ describe("aba Financeiro da ficha", () => {
     const linhas = screen.getAllByRole("listitem");
     const esperado = [
       ["Vencimento em 15/09/2026", "Vencida", reais(3_333)],
-      ["Vencimento em 15/10/2026", "Paga", "Pago em 14/10/2026", reais(3_334)],
+      ["Vencimento em 15/10/2026", "Paga", "Pago em 14/10/2026 · Pix", reais(3_334)],
       ["Vencimento em 15/10/2026", "Vence hoje", reais(3_333)],
       ["Vencimento em 15/11/2026", "A vencer", reais(3_333)],
     ];
@@ -64,5 +64,6 @@ describe("aba Financeiro da ficha", () => {
       for (const texto of esperado[i]) expect(within(linha).getByText(texto)).toBeTruthy();
     });
     expect(screen.queryByText(reais(99_000))).toBeNull();
+    expect(screen.getAllByRole("button", { name: /^Dar baixa na parcela de/ })).toHaveLength(3); // a paga não tem o botão
   });
 });
