@@ -1,6 +1,7 @@
 import { PageShell } from "@/ui";
 
 import Atestado from "./Atestado";
+import Declaracao from "./Declaracao";
 import Receituario from "./Receituario";
 
 /** A tela `/documentos`: um cartão por documento, empilhados. */
@@ -13,6 +14,7 @@ export default function PaginaDocumentos() {
         </p>
         <Receituario />
         <Atestado />
+        <Declaracao />
       </main>
     </PageShell>
   );
