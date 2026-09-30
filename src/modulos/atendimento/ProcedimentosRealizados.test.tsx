@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import { planos, procedimentos } from "@/dados/colecoes";
 import type { PlanoTratamento, Procedimento, SituacaoPlano } from "@/dominio";
+import { odontogramas } from "@/modulos/odontograma/dados";
 import { dataBR } from "@/modulos/pacientes/exibicao";
 import { diaISO } from "@/ui";
 
@@ -35,8 +36,9 @@ const APROVADO = plano("a", "aprovado", {
 });
 
 beforeEach(() => {
-  procedimentos.substituirTudo([proc({ id: "resina", nome: "Restauração em resina" }), proc({ id: "limpeza", nome: "Profilaxia" })]);
+  procedimentos.substituirTudo([proc({ id: "resina", nome: "Restauração em resina", condicaoResultante: "restauracao" }), proc({ id: "limpeza", nome: "Profilaxia" })]);
   planos.substituirTudo([APROVADO]);
+  odontogramas.substituirTudo([]);
 });
 
 function abrir() {
@@ -89,6 +91,17 @@ describe("cartão Procedimentos realizados", () => {
     expect(screen.getByText("Em andamento")).toBeTruthy();
     expect(screen.getAllByRole("checkbox")).toHaveLength(1); // o feito perdeu a caixa; sobrou a limpeza
     expect((screen.getByRole("button", { name: "Marcar como realizados" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("o procedimento com condição resultante marca o odontograma do paciente; o sem condição não", () => {
+    abrir();
+    escolher(/Profilaxia/);
+    marcar();
+    expect(odontogramas.obter("pac1")).toBeUndefined();
+
+    escolher(/Restauração em resina/);
+    marcar();
+    expect(odontogramas.obter("pac1")?.marcas).toEqual([{ dente: 16, face: "O", condicao: "restauracao" }]);
   });
 
   it("vários de uma vez, e o item já realizado antes continua com a data antiga", () => {

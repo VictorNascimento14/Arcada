@@ -13,7 +13,8 @@ import { aceitaRegistro, registrarRealizados } from "./realizados";
 /**
  * O cartão "Procedimentos realizados" da tela do atendimento: os itens dos planos aprovados ou em andamento do
  * paciente. Os pendentes têm caixa de escolha; um botão marca os escolhidos como realizados hoje. Os já feitos
- * aparecem com a data. A gravação e as regras são de `registrarRealizados`.
+ * aparecem com a data. A gravação e as regras (inclusive a marca que o procedimento deixa no odontograma) são de
+ * `registrarRealizados`.
  */
 export default function ProcedimentosRealizados({ pacienteId }: { pacienteId: string }) {
   const todos = useColecao(planos);
@@ -37,15 +38,18 @@ export default function ProcedimentosRealizados({ pacienteId }: { pacienteId: st
   function registrar() {
     const dia = diaISO(new Date());
     let feitos = 0;
+    let marcas = 0;
     for (const { plano } of abertos) {
       const ids = plano.itens.filter((i) => escolhidos.has(i.id) && !i.realizadoEm).map((i) => i.id);
       if (ids.length === 0) continue;
       const r = registrarRealizados(plano.id, ids, dia);
       if (!r.ok) return toast("Não foi possível registrar", r.erro);
       feitos += ids.length;
+      marcas += r.marcas.length;
     }
     setEscolhidos(new Set());
-    toast("Procedimentos registrados", `${rotuloItens(feitos)} ${feitos === 1 ? "realizado" : "realizados"} em ${dataBR(dia)}.`);
+    const aviso = marcas > 0 ? " O odontograma foi atualizado." : "";
+    toast("Procedimentos registrados", `${rotuloItens(feitos)} ${feitos === 1 ? "realizado" : "realizados"} em ${dataBR(dia)}.${aviso}`);
   }
 
   return (
