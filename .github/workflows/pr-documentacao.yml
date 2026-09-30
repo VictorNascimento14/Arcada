@@ -1,0 +1,26 @@
+name: Documentação do PR
+
+# Todo PR linka a nota do cofre. Sem isto, a regra "sempre linkar o cofre"
+# depende de alguém lembrar — e a decisão morre no diff.
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+jobs:
+  documentacao:
+    name: seção 📓 Documentação
+    runs-on: ubuntu-latest
+    steps:
+      - name: Conferir o corpo do PR
+        env:
+          CORPO: ${{ github.event.pull_request.body }}
+        run: |
+          if ! printf '%s' "$CORPO" | grep -q '^## 📓 Documentação'; then
+            echo "::error::O corpo do PR precisa da seção '## 📓 Documentação'."
+            exit 1
+          fi
+          if ! printf '%s' "$CORPO" | grep -q 'github.com/VictorNascimento14/Obsidian-arcada'; then
+            echo "::error::A seção de documentação precisa de ao menos um link para o cofre Obsidian-arcada."
+            exit 1
+          fi
+          echo "Documentação linkada."
