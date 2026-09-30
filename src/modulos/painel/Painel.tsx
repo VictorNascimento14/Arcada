@@ -5,6 +5,7 @@ import { GlassCard, PageShell } from "@/ui";
 import ConsultasDeHoje from "./ConsultasDeHoje";
 import { agoraISO } from "./hoje";
 import IndicadoresDoMes from "./IndicadoresDoMes";
+import TratamentosEmAberto from "./TratamentosEmAberto";
 
 /**
  * O minuto de agora, `AAAA-MM-DDTHH:mm`. O painel fica aberto o dia inteiro: sem o relógio, a virada do dia e a
@@ -34,6 +35,7 @@ export default function Painel() {
           </p>
         </GlassCard>
         <IndicadoresDoMes hoje={agora.slice(0, 10)} />
+        <TratamentosEmAberto />
         <ConsultasDeHoje agora={agora} />
       </main>
     </PageShell>
