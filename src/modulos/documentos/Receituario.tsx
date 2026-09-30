@@ -38,10 +38,12 @@ export default function Receituario() {
 
   return (
     <GlassCard className="p-[26px]">
-      <h2 className="text-xl font-bold tracking-[-0.01em] text-foreground-950">Receituário</h2>
+      <h2 id={`${id}-titulo`} className="text-xl font-bold tracking-[-0.01em] text-foreground-950">
+        Receituário
+      </h2>
       <p className="mt-1 text-foreground-500">Texto livre: o app não sugere medicamento, dose nem conduta.</p>
 
-      <form onSubmit={enviar} noValidate className="mt-6 grid gap-4 md:grid-cols-2">
+      <form onSubmit={enviar} noValidate aria-labelledby={`${id}-titulo`} className="mt-6 grid gap-4 md:grid-cols-2">
         <PacienteEProfissional
           id={id}
           pacienteId={campos.pacienteId}

@@ -1,5 +1,6 @@
 import { PageShell } from "@/ui";
 
+import Atestado from "./Atestado";
 import Receituario from "./Receituario";
 
 /** A tela `/documentos`: um cartão por documento, empilhados. */
@@ -11,6 +12,7 @@ export default function PaginaDocumentos() {
           A v1 é demonstração: o documento sai com linha para assinatura à mão e não tem validade jurídica.
         </p>
         <Receituario />
+        <Atestado />
       </main>
     </PageShell>
   );
