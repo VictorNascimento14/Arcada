@@ -72,7 +72,7 @@ e atualizá-lo faz parte da tarefa que descobriu a divergência, no **mesmo PR**
   - `src/dominio/` — tipos e regras puras compartilhadas por mais de um módulo (notação FDI, dinheiro,
     datas). Sem React.
   - `src/modulos/<modulo>/` — tudo de um módulo: telas, componentes, regras e testes, mais o
-    `modulo.tsx` que o registra (ver "Módulos" abaixo).
+    `modulo.ts` que o registra (ver "Módulos" abaixo).
   - `src/componentes/` — peças reusadas por 2+ módulos. `src/sistema/` — telas de sistema.
 - Checks: `npm run lint` · `npm run type-check` · `npm test` (Vitest) · `npm run build`. O CI roda os quatro.
 - Textos da interface em **português do Brasil**, com acentuação correta.
@@ -92,8 +92,9 @@ e atualizá-lo faz parte da tarefa que descobriu a divergência, no **mesmo PR**
 
 ### Módulos
 
-Cada módulo mora em `src/modulos/<modulo>/` e exporta `modulo` do seu `modulo.tsx`: rotas, item da
-coluna e, se tiver, a aba que aparece na ficha do paciente. O registro (`src/modulos/index.ts`) acha
+Cada módulo mora em `src/modulos/<modulo>/` e exporta `modulo` do seu `modulo.ts`: rotas, item da
+coluna e, se tiver, a aba que aparece na ficha do paciente. Sem JSX (a rota usa `Component: Tela`): o
+arquivo exporta só um objeto, e o registro só acha `modulo.ts` — um `modulo.tsx` nunca entra. O registro (`src/modulos/index.ts`) acha
 todos por `import.meta.glob`. **Módulo novo não edita arquivo compartilhado** — é o que deixa dois
 PRs de módulos diferentes andarem em paralelo sem conflito.
 
