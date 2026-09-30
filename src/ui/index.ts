@@ -45,3 +45,13 @@ export { default as Reveal } from "./base/Reveal";
 export { default as StatCard, type StatTone } from "./base/StatCard";
 export { default as TextField } from "./base/TextField";
 
+// Casca
+export { default as AppHeader } from "./shell/AppHeader";
+export { default as BottomNav } from "./shell/BottomNav";
+export { default as BrandMark } from "./shell/BrandMark";
+export { default as PageShell } from "./shell/PageShell";
+export { default as RailLayout, type RailOutletContext } from "./shell/RailLayout";
+export { default as Sidebar } from "./shell/Sidebar";
+export { default as TemaToggle } from "./shell/TemaToggle";
+export { default as ToastHost } from "./shell/ToastHost";
+export { itemAtivo, itensDaBarra, type Conta, type GrupoNav, type ItemNav } from "./shell/navegacao";

@@ -1,13 +1,31 @@
-import { GlassCard, StatCard } from "@/ui";
+import { createBrowserRouter, RouterProvider } from "react-router-dom";
+
+import { RailLayout, ToastHost } from "@/ui";
+import { CONTA, GRUPOS } from "./navegacao";
+import Painel from "./paginas/Painel";
+
+/**
+ * Toda tela com coluna lateral é filha da rota do `RailLayout`: ele monta a
+ * coluna UMA vez e passa navegação e conta às telas pelo contexto.
+ *
+ * `basename` vem do `BASE_PATH` do build: `/` em desenvolvimento, `/Arcada/`
+ * no GitHub Pages. Sem ele, toda rota da demo publicada cai no 404.
+ */
+const router = createBrowserRouter(
+  [
+    {
+      element: <RailLayout grupos={GRUPOS} conta={CONTA} />,
+      children: [{ path: "/", element: <Painel /> }],
+    },
+  ],
+  { basename: import.meta.env.BASE_URL },
+);
 
 export default function App() {
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-3xl flex-col justify-center gap-5 p-6">
-      <GlassCard className="p-[26px]">
-        <h1 className="text-3xl font-bold tracking-[-0.02em] text-foreground-950">Arcada</h1>
-        <p className="mt-2 text-foreground-500">Gestão de consultório odontológico.</p>
-      </GlassCard>
-      <StatCard label="Consultas hoje" icon="calendar" value={0} />
-    </main>
+    <>
+      <RouterProvider router={router} />
+      <ToastHost />
+    </>
   );
 }
