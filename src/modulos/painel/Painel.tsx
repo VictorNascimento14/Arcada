@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { GlassCard, PageShell } from "@/ui";
 
 import ConsultasDeHoje from "./ConsultasDeHoje";
+import FaturamentoPorSemana from "./FaturamentoPorSemana";
 import { agoraISO } from "./hoje";
 import IndicadoresDoMes from "./IndicadoresDoMes";
 import TratamentosEmAberto from "./TratamentosEmAberto";
@@ -23,6 +24,7 @@ function useAgora() {
 
 export default function Painel() {
   const agora = useAgora();
+  const hoje = agora.slice(0, 10);
   const dia = new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long" });
 
   return (
@@ -34,9 +36,12 @@ export default function Painel() {
             Pacientes, agenda, odontograma e financeiro do consultório num lugar só.
           </p>
         </GlassCard>
-        <IndicadoresDoMes hoje={agora.slice(0, 10)} />
+        <IndicadoresDoMes hoje={hoje} />
         <TratamentosEmAberto />
-        <ConsultasDeHoje agora={agora} />
+        <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+          <ConsultasDeHoje agora={agora} />
+          <FaturamentoPorSemana hoje={hoje} />
+        </div>
       </main>
     </PageShell>
   );
