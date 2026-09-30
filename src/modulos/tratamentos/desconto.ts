@@ -2,7 +2,7 @@
  * O desconto do orçamento: percentual ou valor, guardado no plano em centavos inteiros (ADR-005) e nunca
  * maior que o subtotal.
  */
-import type { Centavos, PlanoTratamento } from "@/dominio";
+import { paraCentavos, type Centavos, type PlanoTratamento } from "@/dominio";
 
 import { subtotal } from "./plano";
 
@@ -31,4 +31,21 @@ export function aplicarDesconto(plano: PlanoTratamento, desconto: Desconto): Pla
       : desconto.valor;
   // `pedido > 0` é falso para negativo e para NaN: os dois caem em 0.
   return { ...plano, desconto: pedido > 0 ? Math.min(pedido, base) : 0 };
+}
+
+/** Como o formulário escolhe o desconto. */
+export type TipoDeDesconto = Desconto["tipo"];
+
+/**
+ * Lê o que se digitou no campo do desconto: `10` ou `12,5` (percentual, até duas casas; o ponto também vale como
+ * decimal) ou `50,00` (valor, no padrão de `paraCentavos`). `null` para vazio, texto solto e negativo. Zero vale:
+ * aplica um desconto nulo, que tira o que havia.
+ */
+export function lerDesconto(tipo: TipoDeDesconto, texto: string): Desconto | null {
+  if (tipo === "valor") {
+    const valor = paraCentavos(texto);
+    return valor === null ? null : { tipo, valor };
+  }
+  const limpo = texto.trim();
+  return /^\d{1,3}(?:[.,]\d{1,2})?$/.test(limpo) ? { tipo, percentual: Number(limpo.replace(",", ".")) } : null;
 }
