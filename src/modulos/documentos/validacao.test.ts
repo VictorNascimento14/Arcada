@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { Paciente, Profissional } from "@/dominio";
 
-import { dataValida, resolverEscolha } from "./validacao";
+import { dataValida, horaValida, resolverEscolha } from "./validacao";
 
 // Fictícios, sem CPF.
 const ANA: Paciente = { id: "p1", nome: "Ana Beatriz Moura", nascimento: "1985-02-03", telefone: "(00) 90000-0002" };
@@ -17,6 +17,16 @@ describe("dataValida", () => {
 
   it("recusa formato errado, campo vazio e dia que o calendário não tem", () => {
     for (const dia of ["", "30/09/2026", "2026-9-1", "2026-02-29", "2026-02-30", "2026-13-01"]) expect(dataValida(dia), dia).toBe(false);
+  });
+});
+
+describe("horaValida", () => {
+  it("aceita HH:mm de 00:00 a 23:59", () => {
+    for (const hora of ["00:00", "08:30", "23:59"]) expect(horaValida(hora), hora).toBe(true);
+  });
+
+  it("recusa campo vazio, hora que o relógio não tem e formato errado", () => {
+    for (const hora of ["", "24:00", "12:60", "8:30", "08:30:00", "0830"]) expect(horaValida(hora), hora).toBe(false);
   });
 });
 
