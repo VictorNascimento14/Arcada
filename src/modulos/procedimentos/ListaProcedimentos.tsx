@@ -6,6 +6,7 @@ import { formatarReais, type Procedimento } from "@/dominio";
 import { Button, GlassCard, PageShell, TextField } from "@/ui";
 
 import { especialidadesDe, filtrarProcedimentos } from "./busca";
+import EditorDeProcedimento from "./EditorDeProcedimento";
 
 const contagem = (n: number) => `${n} ${n === 1 ? "procedimento" : "procedimentos"}`;
 
@@ -13,7 +14,8 @@ const contagem = (n: number) => `${n} ${n === 1 ? "procedimento" : "procedimento
 const exigencia = (p: Procedimento) => (p.exigeFace ? "Exige dente e face" : p.exigeDente ? "Exige dente" : undefined);
 
 /**
- * `/procedimentos`: a tabela de procedimentos da clínica, com busca por nome e código e filtro por especialidade.
+ * `/procedimentos`: a tabela de procedimentos da clínica, com busca por nome e código, filtro por especialidade e o
+ * cadastro e a edição num modal.
  *
  * ponytail: a lista inteira vai para a tela, sem paginar. O catálogo tem dezenas de linhas; com centenas, o próximo
  * degrau é paginar ou agrupar por especialidade.
@@ -22,6 +24,8 @@ export default function ListaProcedimentos() {
   const todos = useColecao(procedimentos);
   const [termo, setTermo] = useState("");
   const [escolhida, setEscolhida] = useState("");
+  // `null`: modal fechado. `{}`: procedimento novo. `{ procedimento }`: edição dele.
+  const [editor, setEditor] = useState<{ procedimento?: Procedimento } | null>(null);
   const areas = useMemo(() => especialidadesDe(todos), [todos]);
   // A escolhida some da lista se o último procedimento dela mudar de área: o filtro volta a "Todas".
   const especialidade = areas.includes(escolhida) ? escolhida : "";
@@ -31,8 +35,9 @@ export default function ListaProcedimentos() {
   return (
     <PageShell titulo="Procedimentos" detalhe="Cadastro">
       <main className="mx-auto w-full max-w-5xl px-4 pb-28 pt-2 md:px-6 md:pb-10">
-        <div className="grid gap-3 md:grid-cols-[1fr_16rem]">
+        <div className="flex flex-wrap items-end gap-3">
           <TextField
+            className="min-w-[14rem] flex-1"
             label="Buscar procedimento"
             icon="ri-search-line"
             type="search"
@@ -41,7 +46,7 @@ export default function ListaProcedimentos() {
             value={termo}
             onChange={(e) => setTermo(e.target.value)}
           />
-          <div>
+          <div className="w-full sm:w-56">
             <label htmlFor="procedimentos-especialidade" className="mb-1.5 block text-sm font-medium text-foreground-700">
               Especialidade
             </label>
@@ -59,12 +64,16 @@ export default function ListaProcedimentos() {
               ))}
             </select>
           </div>
+          <Button className="w-full sm:ml-auto sm:w-auto" onClick={() => setEditor({})}>
+            <i className="ri-add-line text-base" aria-hidden="true" />
+            Novo procedimento
+          </Button>
         </div>
 
         {todos.length === 0 ? (
           <GlassCard className="mt-6 p-[26px] text-center">
             <p className="font-bold text-foreground-950">Nenhum procedimento cadastrado ainda</p>
-            <p className="mt-1 text-foreground-500">Os procedimentos da clínica aparecem aqui, com preço e duração.</p>
+            <p className="mt-1 text-foreground-500">Use Novo procedimento para cadastrar o primeiro, com preço e duração.</p>
           </GlassCard>
         ) : (
           <>
@@ -92,14 +101,19 @@ export default function ListaProcedimentos() {
               <GlassCard className="mt-3 p-2 md:p-3">
                 <ul className="divide-y divide-foreground-950/[0.06]">
                   {visiveis.map((p) => (
-                    <li key={p.id} className="flex items-center gap-4 px-3 py-3">
-                      <div className="min-w-0 flex-1">
+                    <li key={p.id} className="flex flex-col gap-2 px-3 py-3 sm:flex-row sm:items-center sm:gap-4">
+                      <div className="min-w-0 sm:flex-1">
                         <p className="font-semibold text-foreground-950">{p.nome}</p>
                         <p className="text-sm text-foreground-500">{[p.codigo, p.especialidade, exigencia(p)].filter(Boolean).join(" · ")}</p>
                       </div>
-                      <div className="shrink-0 text-right">
-                        <p className="font-bold tabular-nums text-foreground-950">{formatarReais(p.preco)}</p>
-                        <p className="text-sm text-foreground-500">{p.duracaoMin} min</p>
+                      <div className="flex items-center justify-between gap-3 sm:justify-end">
+                        <div className="sm:text-right">
+                          <p className="font-bold tabular-nums text-foreground-950">{formatarReais(p.preco)}</p>
+                          <p className="text-sm text-foreground-500">{p.duracaoMin} min</p>
+                        </div>
+                        <Button variant="ghost" aria-label={`Editar ${p.nome}`} onClick={() => setEditor({ procedimento: p })}>
+                          Editar
+                        </Button>
                       </div>
                     </li>
                   ))}
@@ -108,6 +122,8 @@ export default function ListaProcedimentos() {
             )}
           </>
         )}
+
+        {editor && <EditorDeProcedimento procedimento={editor.procedimento} aoFechar={() => setEditor(null)} />}
       </main>
     </PageShell>
   );
