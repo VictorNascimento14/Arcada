@@ -1,9 +1,9 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { lancamentos, planos } from "@/dados/colecoes";
-import type { PlanoTratamento, SituacaoPlano } from "@/dominio";
+import type { Lancamento, PlanoTratamento, SituacaoPlano } from "@/dominio";
 
-import { calcularParcelas, gerarParcelas, MAXIMO_DE_PARCELAS } from "./lancamentos";
+import { calcularParcelas, darBaixa, gerarParcelas, MAXIMO_DE_PARCELAS } from "./lancamentos";
 
 const PLANO: PlanoTratamento = {
   id: "pl1",
@@ -94,5 +94,55 @@ describe("gerarParcelas", () => {
 
   it("lança se o plano não existe", () => {
     expect(() => gerarParcelas("nada", campos("2"))).toThrow("não existe");
+  });
+});
+
+describe("darBaixa", () => {
+  const HOJE = "2026-10-15";
+  const PARCELA: Lancamento = { id: "l1", pacienteId: "pac1", planoId: "pl1", valor: 3_334, vencimento: "2026-10-15" };
+  const OUTRA: Lancamento = { ...PARCELA, id: "l2", vencimento: "2026-11-15" };
+
+  beforeEach(() => lancamentos.substituirTudo([PARCELA, OUTRA]));
+  afterEach(() => vi.useRealTimers());
+
+  it("grava o dia e a forma do pagamento só nessa parcela, pelo valor inteiro", () => {
+    expect(darBaixa("l1", { forma: "pix", data: "2026-10-14" }, HOJE)).toEqual({});
+    expect(lancamentos.obter("l1")).toEqual({ ...PARCELA, pagoEm: "2026-10-14", forma: "pix" });
+    expect(lancamentos.obter("l2")).toEqual(OUTRA);
+  });
+
+  it.each(["dinheiro", "pix", "debito", "credito"])("aceita a forma %s e o pagamento no próprio dia", (forma) => {
+    expect(darBaixa("l1", { forma, data: HOJE }, HOJE)).toEqual({});
+    expect(lancamentos.obter("l1")).toMatchObject({ pagoEm: HOJE, forma });
+  });
+
+  it.each(["", "cheque"])("recusa %j como forma", (forma) => {
+    expect(darBaixa("l1", { forma, data: HOJE }, HOJE)).toEqual({ forma: "Escolha a forma de pagamento." });
+    expect(lancamentos.obter("l1")).toEqual(PARCELA);
+  });
+
+  it.each(["", "2026-02-30", "14/10/2026"])("recusa %j como data", (data) => {
+    expect(darBaixa("l1", { forma: "pix", data }, HOJE)).toEqual({ data: "Informe o dia do pagamento." });
+    expect(lancamentos.obter("l1")).toEqual(PARCELA);
+  });
+
+  it("recusa o pagamento depois de hoje, e devolve os dois erros quando os dois campos estão errados", () => {
+    expect(darBaixa("l1", { forma: "pix", data: "2026-10-16" }, HOJE)).toEqual({ data: "O pagamento não pode ser depois de hoje." });
+    expect(darBaixa("l1", { forma: "", data: "" }, HOJE)).toEqual({ forma: expect.any(String), data: expect.any(String) });
+    expect(lancamentos.obter("l1")).toEqual(PARCELA);
+  });
+
+  it("sem o dia de hoje, usa o dia local: às 23:30 do dia 15, o 15 passa e o 16 não", () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(2026, 9, 15, 23, 30)); // em UTC já seria dia 16
+    expect(darBaixa("l1", { forma: "pix", data: "2026-10-15" })).toEqual({});
+    expect(darBaixa("l2", { forma: "pix", data: "2026-10-16" })).toEqual({ data: expect.any(String) });
+  });
+
+  it("lança se a parcela não existe ou já está paga, sem mexer na baixa que havia", () => {
+    expect(() => darBaixa("nada", { forma: "pix", data: HOJE }, HOJE)).toThrow("não existe");
+    darBaixa("l1", { forma: "pix", data: "2026-10-14" }, HOJE);
+    expect(() => darBaixa("l1", { forma: "dinheiro", data: HOJE }, HOJE)).toThrow("já está paga");
+    expect(lancamentos.obter("l1")).toMatchObject({ pagoEm: "2026-10-14", forma: "pix" });
   });
 });

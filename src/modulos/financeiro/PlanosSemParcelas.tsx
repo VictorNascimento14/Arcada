@@ -42,7 +42,7 @@ export default function PlanosSemParcelas() {
         <ul className="mt-4 divide-y divide-foreground-950/[0.06]">
           {aParcelar.map(({ plano, paciente }) => (
             <li key={plano.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 py-3">
-              <Link to={`/planos/${plano.id}`} className="flex min-w-0 flex-1 items-center gap-3 transition-colors hover:bg-primary-900/[0.04]">
+              <Link to={`/planos/${plano.id}`} className="flex min-w-0 flex-1 basis-40 items-center gap-3 transition-colors hover:bg-primary-900/[0.04]">
                 {paciente && (
                   <span aria-hidden="true">
                     <Avatar nome={paciente.nome} size={40} />

@@ -6,7 +6,9 @@ import { formatarReais, somarCentavos } from "@/dominio";
 import { dataBR } from "@/modulos/pacientes/exibicao";
 import { Avatar, GlassCard, diaISO } from "@/ui";
 
+import BaixaDaParcela from "./BaixaDaParcela";
 import { contasAReceber } from "./contasAReceber";
+import { ROTULO_DA_FORMA } from "./formas";
 import SituacaoDaParcelaBadge from "./SituacaoDaParcelaBadge";
 
 /** As contas a receber: as parcelas de todos os pacientes, com a situação de hoje. As em aberto vêm primeiro. */
@@ -34,21 +36,25 @@ export default function ContasAReceber() {
           </p>
           <ul className="mt-2 divide-y divide-foreground-950/[0.06]">
             {contas.map(({ lancamento: l, paciente, situacao }) => (
-              <li key={l.id} className="flex items-center gap-3 py-3">
-                {paciente && (
-                  <span aria-hidden="true">
-                    <Avatar nome={paciente.nome} size={40} />
-                  </span>
-                )}
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-semibold text-foreground-950">{paciente?.nome ?? "Paciente não encontrado"}</p>
-                  <p className="text-sm text-foreground-500">
-                    Vencimento em {dataBR(l.vencimento)}
-                    {l.pagoEm && ` · pago em ${dataBR(l.pagoEm)}`}
-                  </p>
+              <li key={l.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 py-3">
+                <div className="flex min-w-0 flex-1 basis-48 items-center gap-3">
+                  {paciente && (
+                    <span aria-hidden="true">
+                      <Avatar nome={paciente.nome} size={40} />
+                    </span>
+                  )}
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold text-foreground-950">{paciente?.nome ?? "Paciente não encontrado"}</p>
+                    <p className="text-sm text-foreground-500">
+                      Vencimento em {dataBR(l.vencimento)}
+                      {l.pagoEm && ` · pago em ${dataBR(l.pagoEm)}`}
+                      {l.forma && ` · ${ROTULO_DA_FORMA[l.forma]}`}
+                    </p>
+                  </div>
                 </div>
                 <SituacaoDaParcelaBadge situacao={situacao} />
                 <p className="font-semibold tabular-nums text-foreground-950">{formatarReais(l.valor)}</p>
+                {situacao !== "paga" && <BaixaDaParcela parcela={l} quem={paciente?.nome} />}
               </li>
             ))}
           </ul>
