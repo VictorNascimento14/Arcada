@@ -1,11 +1,11 @@
-import { useId, useState, type ComponentType, type KeyboardEvent } from "react";
+import { useEffect, useId, useState, type ComponentType, type KeyboardEvent } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { pacientes } from "@/dados/colecoes";
 import { useColecao } from "@/dados/useColecao";
 import { NAVEGACAO } from "@/modulos";
 import SeloAlertas from "@/modulos/anamnese/SeloAlertas";
-import { Avatar, diaISO, GlassCard, PageShell } from "@/ui";
+import { Avatar, diaISO, GlassCard, PageShell, usePrefersReducedMotion } from "@/ui";
 import { linkTelefone, linkWhatsApp } from "./contato";
 import DadosDoPaciente from "./DadosDoPaciente";
 import { anosDoPaciente, rotuloConvenio, rotuloIdade } from "./exibicao";
@@ -27,6 +27,15 @@ export default function FichaPaciente() {
   const paciente = useColecao(pacientes).find((p) => p.id === id);
   const [ativa, setAtiva] = useState(ABA_DADOS.chave);
   const base = useId();
+  const reduzido = usePrefersReducedMotion();
+
+  // No celular a barra de abas rola na horizontal: a aba ativa (toque na ponta ou setas) entra inteira na tela.
+  // `?.` no método: o jsdom não tem `scrollIntoView`.
+  useEffect(() => {
+    document
+      .getElementById(`${base}-aba-${ativa}`)
+      ?.scrollIntoView?.({ block: "nearest", inline: "nearest", behavior: reduzido ? "auto" : "smooth" });
+  }, [ativa, base, reduzido]);
 
   if (!paciente) {
     return (
