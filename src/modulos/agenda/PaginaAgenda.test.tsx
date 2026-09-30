@@ -1,0 +1,195 @@
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { createMemoryRouter, RouterProvider } from "react-router-dom";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import { cadeiras, clinica, CLINICA_ID, consultas, pacientes, procedimentos, profissionais } from "@/dados/colecoes";
+import type { Cadeira, Clinica, Consulta, Paciente, Procedimento, Profissional } from "@/dominio";
+import { ROTAS } from "@/rotas";
+
+// Tudo fictício: telefones com DDD 00, que não existe; nenhum CPF.
+const MANHA = { inicio: "08:00", fim: "12:00" };
+const TARDE = { inicio: "13:30", fim: "18:00" };
+const CLINICA: Clinica = {
+  id: CLINICA_ID,
+  nome: "Clínica Exemplo",
+  expediente: { 0: [], 1: [MANHA, TARDE], 2: [MANHA, TARDE], 3: [MANHA, TARDE], 4: [MANHA, TARDE], 5: [MANHA, TARDE], 6: [MANHA] },
+};
+const CADEIRAS: Cadeira[] = [
+  { id: "c1", nome: "Cadeira 1" },
+  { id: "c2", nome: "Cadeira 2" },
+];
+const PROFISSIONAIS: Profissional[] = [
+  { id: "p1", nome: "Dra. Exemplo", cro: "CRO-SP 00000", cor: "#1f6f5b" },
+  { id: "p2", nome: "Dr. Exemplo", cro: "CRO-SP 00001", cor: "#4a6fa5" },
+];
+const PACIENTES: Paciente[] = [
+  { id: "a1", nome: "Ana Beatriz Moura", nascimento: "1985-02-03", telefone: "(00) 90000-0002" },
+  { id: "a2", nome: "João Pedro Alves", nascimento: "2018-05-14", telefone: "(00) 90000-0005" },
+  { id: "a3", nome: "Helena Duarte", nascimento: "1996-12-30", telefone: "(00) 90000-0004" },
+];
+const PROCEDIMENTOS: Procedimento[] = [
+  { id: "pr1", nome: "Restauração", especialidade: "Dentística", preco: 15000, duracaoMin: 45, exigeDente: true, exigeFace: true, ativo: true },
+];
+const CONSULTAS: Consulta[] = [
+  { id: "k1", pacienteId: "a1", profissionalId: "p1", cadeiraId: "c1", inicio: "2026-09-30T08:00", duracaoMin: 45, situacao: "confirmada", procedimentoId: "pr1" },
+  { id: "k2", pacienteId: "a2", profissionalId: "p2", cadeiraId: "c2", inicio: "2026-09-30T10:30", duracaoMin: 90, situacao: "agendada" },
+  { id: "k3", pacienteId: "a3", profissionalId: "p1", cadeiraId: "c1", inicio: "2026-09-30T14:00", duracaoMin: 30, situacao: "cancelada" },
+  { id: "k4", pacienteId: "a3", profissionalId: "p1", cadeiraId: "c1", inicio: "2026-10-01T09:00", duracaoMin: 30, situacao: "agendada" },
+];
+
+const TODAS = [clinica, cadeiras, profissionais, pacientes, procedimentos, consultas];
+
+/** Fixa "hoje" ao meio-dia de `dia`. Só o `Date`: os temporizadores reais seguem, e o `findBy` depende deles. */
+const hojeE = (a: number, m: number, d: number) => vi.setSystemTime(new Date(a, m - 1, d, 12));
+
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  hojeE(2026, 9, 30); // quarta-feira
+  clinica.substituirTudo([CLINICA]);
+  cadeiras.substituirTudo(CADEIRAS);
+  profissionais.substituirTudo(PROFISSIONAIS);
+  pacientes.substituirTudo(PACIENTES);
+  procedimentos.substituirTudo(PROCEDIMENTOS);
+  consultas.substituirTudo(CONSULTAS);
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+  for (const c of TODAS) c.substituirTudo([]);
+});
+
+// Monta as rotas de verdade: o módulo entra pelo registro, com a coluna e a casca.
+async function abrir(titulo = "quarta-feira, 30 de setembro de 2026") {
+  render(<RouterProvider router={createMemoryRouter(ROTAS, { initialEntries: ["/agenda"] })} />);
+  await screen.findByRole("heading", { name: titulo });
+}
+
+const cartoes = (cadeira: string) =>
+  within(screen.getByRole("list", { name: `Consultas da ${cadeira}` })).queryAllByRole("article");
+
+describe("agenda: visão do dia", () => {
+  it("entra na coluna lateral pelo registro de módulos e abre no dia de hoje", async () => {
+    render(<RouterProvider router={createMemoryRouter(ROTAS, { initialEntries: ["/"] })} />);
+
+    fireEvent.click((await screen.findAllByRole("button", { name: /Agenda/ }))[0]);
+
+    expect(await screen.findByRole("heading", { name: "quarta-feira, 30 de setembro de 2026" })).toBeTruthy();
+  });
+
+  it("monta uma coluna por cadeira, com as horas do expediente, só com as consultas do dia que não foram canceladas", async () => {
+    await abrir();
+
+    expect(screen.getByRole("heading", { level: 3, name: "Cadeira 1" })).toBeTruthy();
+    expect(screen.getByRole("heading", { level: 3, name: "Cadeira 2" })).toBeTruthy();
+    expect(cartoes("Cadeira 1")).toHaveLength(1); // a cancelada e a de amanhã ficam de fora
+    expect(cartoes("Cadeira 2")).toHaveLength(1);
+    expect(screen.getByText("2 consultas neste dia")).toBeTruthy();
+    expect(screen.getByText("08:00")).toBeTruthy();
+    expect(screen.getByText("18:00")).toBeTruthy();
+    expect(screen.queryByText("Helena Duarte")).toBeNull();
+  });
+
+  it("o cartão traz paciente, horário, procedimento, profissional e situação, na cor do profissional", async () => {
+    await abrir();
+
+    const [ana] = cartoes("Cadeira 1");
+    expect(ana.textContent).toContain("Ana Beatriz Moura");
+    expect(ana.textContent).toContain("08:00–08:45 · Restauração");
+    expect(ana.textContent).toContain("Confirmada · Dra. Exemplo");
+    expect(ana.style.borderLeftColor).toBe("rgb(31, 111, 91)"); // #1f6f5b
+
+    // Sem procedimento, a linha do horário fica só com o horário.
+    const [joao] = cartoes("Cadeira 2");
+    expect(joao.textContent).toContain("João Pedro Alves");
+    expect(within(joao).getByText("10:30–12:00")).toBeTruthy(); // só o horário: sem " · procedimento"
+    expect(joao.style.borderLeftColor).toBe("rgb(74, 111, 165)"); // #4a6fa5
+  });
+
+  it("o cartão começa na hora e tem o tamanho da duração (7 rem por hora, a partir da abertura)", async () => {
+    await abrir();
+
+    const ana = cartoes("Cadeira 1")[0].parentElement!;
+    expect(parseFloat(ana.style.top)).toBe(0); // 08:00, a abertura
+    expect(ana.style.height).toBe("5.25rem"); // 45 min
+    const joao = cartoes("Cadeira 2")[0].parentElement!;
+    expect(joao.style.top).toBe("17.5rem"); // 10:30, duas horas e meia depois
+    expect(joao.style.height).toBe("10.5rem"); // 90 min
+  });
+
+  it("navega de dia em dia e Hoje volta", async () => {
+    await abrir();
+    const hoje = screen.getByRole("button", { name: "Hoje" }) as HTMLButtonElement;
+    expect(hoje.disabled).toBe(true); // já está em hoje
+
+    fireEvent.click(screen.getByRole("button", { name: "Próximo dia" }));
+    expect(await screen.findByRole("heading", { name: "quinta-feira, 1 de outubro de 2026" })).toBeTruthy();
+    expect(cartoes("Cadeira 1")[0].textContent).toContain("Helena Duarte");
+    expect(screen.getByText("1 consulta neste dia")).toBeTruthy();
+    expect(hoje.disabled).toBe(false);
+
+    fireEvent.click(screen.getByRole("button", { name: "Dia anterior" }));
+    fireEvent.click(screen.getByRole("button", { name: "Dia anterior" }));
+    expect(await screen.findByRole("heading", { name: "terça-feira, 29 de setembro de 2026" })).toBeTruthy();
+    expect(screen.getByText("Nenhuma consulta neste dia")).toBeTruthy();
+
+    fireEvent.click(hoje);
+    expect(await screen.findByRole("heading", { name: "quarta-feira, 30 de setembro de 2026" })).toBeTruthy();
+    expect(hoje.disabled).toBe(true);
+  });
+
+  it("avisa o feriado", async () => {
+    hojeE(2026, 9, 7);
+    await abrir("segunda-feira, 7 de setembro de 2026");
+    expect(screen.getByText("Feriado: Independência do Brasil.")).toBeTruthy();
+  });
+
+  it("avisa o ponto facultativo", async () => {
+    hojeE(2026, 2, 17);
+    await abrir("terça-feira, 17 de fevereiro de 2026");
+    expect(screen.getByText("Ponto facultativo: Carnaval.")).toBeTruthy();
+  });
+
+  it("dia em que a clínica não atende mostra o aviso, e não a grade", async () => {
+    hojeE(2026, 10, 4); // domingo
+    await abrir("domingo, 4 de outubro de 2026");
+
+    expect(screen.getByText("Clínica fechada neste dia")).toBeTruthy();
+    expect(screen.queryByRole("list", { name: /Consultas da/ })).toBeNull();
+  });
+
+  it("consulta marcada num dia fechado não some: a grade aparece e o resumo avisa", async () => {
+    hojeE(2026, 10, 4);
+    consultas.salvar({ ...CONSULTAS[0], id: "k5", inicio: "2026-10-04T09:00" });
+    await abrir("domingo, 4 de outubro de 2026");
+
+    expect(cartoes("Cadeira 1")).toHaveLength(1);
+    expect(screen.getByText("1 consulta neste dia — a clínica não atende neste dia")).toBeTruthy();
+  });
+
+  it("cadeira inativa sai da agenda, menos no dia em que ainda tem consulta", async () => {
+    cadeiras.salvar({ id: "c3", nome: "Cadeira 3", ativa: false });
+    await abrir();
+    expect(screen.queryByRole("heading", { name: "Cadeira 3" })).toBeNull();
+
+    act(() => consultas.salvar({ ...CONSULTAS[0], id: "k6", cadeiraId: "c3", profissionalId: "p2", inicio: "2026-09-30T15:00" }));
+    expect(screen.getByRole("heading", { name: "Cadeira 3" })).toBeTruthy();
+    expect(cartoes("Cadeira 3")).toHaveLength(1);
+  });
+
+  it("cadastro removido depois da marcação aparece como removido, e a consulta continua na grade", async () => {
+    consultas.substituirTudo([{ ...CONSULTAS[0], pacienteId: "sumiu", profissionalId: "sumiu" }]);
+    await abrir();
+
+    const [cartao] = cartoes("Cadeira 1");
+    expect(cartao.textContent).toContain("Paciente removido");
+    expect(cartao.textContent).toContain("Confirmada · Profissional removido");
+  });
+
+  it("sem nenhuma cadeira ativa, pede o cadastro em vez de desenhar a grade", async () => {
+    cadeiras.substituirTudo([]);
+    consultas.substituirTudo([]);
+    await abrir();
+
+    expect(screen.getByText("Nenhuma cadeira cadastrada")).toBeTruthy();
+  });
+});

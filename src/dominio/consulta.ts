@@ -12,5 +12,7 @@ export type Consulta = {
   inicio: DataHoraISO;
   /** Em minutos. O fim é `inicio` mais a duração e não se guarda. */
   duracaoMin: number;
+  /** Procedimento previsto, do catálogo (`procedimentos`). Opcional: uma avaliação ou um retorno pode não ter um. */
+  procedimentoId?: string;
   situacao: SituacaoConsulta;
 };
