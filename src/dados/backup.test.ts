@@ -151,6 +151,33 @@ describe("restaurarDemonstracao", () => {
     expect(semear).toHaveBeenCalledTimes(2);
   });
 
+  /** O que o `main.tsx` faz ao carregar a página: módulos novos (coleções vazias na memória, relidas do storage) e as sementes. */
+  async function carregarApp() {
+    vi.resetModules();
+    const colecoes = await import("./colecoes");
+    const { SEMEADORES } = await import("./semeadores");
+    const { carregarSementes: semear } = await import("./sementes");
+    semear(SEMEADORES);
+    return colecoes;
+  }
+
+  it("depois de restaurar e recarregar, as sementes de verdade plantam pacientes e consultas de novo", async () => {
+    const primeira = await carregarApp();
+    const pacientesDeExemplo = primeira.pacientes.listar().map((p) => p.id);
+    const consultasDeExemplo = primeira.consultas.listar().length;
+    expect(pacientesDeExemplo.length).toBeGreaterThan(0);
+    expect(consultasDeExemplo).toBeGreaterThan(0);
+
+    // O usuário troca a demonstração pelos próprios dados e depois restaura.
+    primeira.pacientes.substituirTudo([{ id: "meu", nome: "Paciente Exemplo", nascimento: "2000-01-01", telefone: "(00) 90000-0000" }]);
+    primeira.consultas.substituirTudo([]);
+    restaurarDemonstracao();
+    const recarregada = await carregarApp();
+
+    expect(recarregada.pacientes.listar().map((p) => p.id)).toEqual(pacientesDeExemplo);
+    expect(recarregada.consultas.listar()).toHaveLength(consultasDeExemplo);
+  });
+
   it("com o armazenamento bloqueado, não lança", () => {
     vi.spyOn(globalThis, "localStorage", "get").mockImplementation(() => {
       throw new DOMException("bloqueado", "SecurityError");
