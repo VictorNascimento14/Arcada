@@ -11,5 +11,6 @@ it("o item Clínica da coluna abre /clinica com os dados da clínica", async () 
 
   expect(await screen.findByRole("heading", { name: "Dados da clínica" })).toBeTruthy();
   expect(screen.getByRole("heading", { name: "Expediente" })).toBeTruthy();
+  expect(screen.getByRole("heading", { name: "Convênios aceitos" })).toBeTruthy();
   expect(screen.getAllByRole("button", { name: "Clínica" }).some((b) => b.getAttribute("aria-current") === "page")).toBe(true);
 });
