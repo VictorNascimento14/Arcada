@@ -1,4 +1,4 @@
-// Backup dos dados locais (ADR-001). Como `colecao.ts`, mora em `src/dados/`: é onde se enumeram e se escrevem as
+// Backup e restauração dos dados locais (ADR-001). Como `colecao.ts`, mora em `src/dados/`: é onde se enumeram e se escrevem as
 // chaves do `localStorage`. Tudo o que o repositório guarda está sob o prefixo `arcada:` — uma chave por coleção e as
 // marcas de semente (`arcada:sementes:*`). As preferências do kit (`arcada-tema`, `arcada-sidebar-collapsed`) usam
 // traço: ficam fora do prefixo, do backup e da limpeza — assim como as chaves de outro app na mesma origem.
@@ -135,4 +135,15 @@ export function substituirPor({ dados }: Backup): string | undefined {
     }
     return "Não foi possível gravar o backup: o armazenamento do navegador está cheio ou bloqueado. Os dados atuais foram mantidos.";
   }
+}
+
+/**
+ * Apaga tudo o que o Arcada guarda — coleções e marcas de semente — e devolve o app ao estado de primeira visita. A
+ * marca vai junto de propósito: `carregarSementes` pula o semeador cuja marca está na versão, então com ela no lugar
+ * a página recarregaria VAZIA. Recarregar é com quem chama (ver o topo do arquivo): no carregamento seguinte as
+ * sementes plantam a demonstração de novo. Preferências do kit (`arcada-tema`…) e chaves de outro app ficam.
+ */
+export function restaurarDemonstracao(): void {
+  const s = armazenamento();
+  if (s) trocarChaves(s, {});
 }
