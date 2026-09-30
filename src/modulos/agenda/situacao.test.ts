@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { SituacaoConsulta } from "@/dominio";
 
-import { ACAO_DA_SITUACAO, podeTransitar, transicoesDe } from "./situacao";
+import { ACAO_DA_SITUACAO, aguardaAtendimento, podeTransitar, transicoesDe } from "./situacao";
 
 const SITUACOES: SituacaoConsulta[] = ["agendada", "confirmada", "em-atendimento", "concluida", "faltou", "cancelada"];
 
@@ -41,5 +41,11 @@ describe("podeTransitar", () => {
 describe("ACAO_DA_SITUACAO", () => {
   it("todo destino de transição tem o verbo do botão", () => {
     for (const de of SITUACOES) for (const para of transicoesDe(de)) expect(ACAO_DA_SITUACAO[para], `${de} > ${para}`).toBeTruthy();
+  });
+});
+
+describe("aguardaAtendimento", () => {
+  it("só a agendada e a confirmada aguardam o atendimento", () => {
+    expect(SITUACOES.filter(aguardaAtendimento)).toEqual(["agendada", "confirmada"]);
   });
 });

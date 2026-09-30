@@ -195,15 +195,15 @@ describe("agenda: visão do dia", () => {
   });
 });
 
-describe("agenda: situação da consulta", () => {
-  // O cartão é o botão que abre o detalhe da consulta.
-  const abrirCartao = async (paciente: string) => {
-    fireEvent.click(screen.getByRole("button", { name: new RegExp(paciente) }));
-    return within(await screen.findByRole("dialog", { name: `Consulta de ${paciente}` }));
-  };
-  type Detalhe = Awaited<ReturnType<typeof abrirCartao>>;
-  const botoes = (d: Detalhe) => within(d.getByRole("group", { name: "Mudar a situação" })).getAllByRole("button").map((b) => b.textContent);
+// O cartão é o botão que abre o detalhe da consulta.
+const abrirCartao = async (paciente: string) => {
+  fireEvent.click(screen.getByRole("button", { name: new RegExp(paciente) }));
+  return within(await screen.findByRole("dialog", { name: `Consulta de ${paciente}` }));
+};
+type Detalhe = Awaited<ReturnType<typeof abrirCartao>>;
+const botoes = (d: Detalhe) => within(d.getByRole("group", { name: "Mudar a situação" })).getAllByRole("button").map((b) => b.textContent);
 
+describe("agenda: situação da consulta", () => {
   it("clicar no cartão abre o detalhe: quem, quando, onde e a situação", async () => {
     await abrir();
     const d = await abrirCartao("Ana Beatriz Moura");
@@ -266,5 +266,119 @@ describe("agenda: situação da consulta", () => {
     fireEvent.click((await abrirCartao("João Pedro Alves")).getByRole("button", { name: "Marcar falta" }));
 
     expect(cartoes("Cadeira 2")[0].textContent).toContain("Faltou · Dr. Exemplo");
+  });
+});
+
+describe("agenda: remarcar e cancelar", () => {
+  const remarcando = async (paciente: string) => {
+    await abrir();
+    fireEvent.click((await abrirCartao(paciente)).getByRole("button", { name: "Remarcar" }));
+    return within(await screen.findByRole("dialog", { name: "Remarcar consulta" }));
+  };
+  const valor = (f: Detalhe, rotulo: string) => (f.getByLabelText(rotulo) as HTMLInputElement | HTMLSelectElement).value;
+  const botao = (f: Detalhe, nome: string) => f.getByRole("button", { name: nome }) as HTMLButtonElement;
+
+  it("Remarcar troca o detalhe pelo formulário de marcar, com os dados da consulta e o paciente travado", async () => {
+    const f = await remarcando("João Pedro Alves");
+
+    expect(screen.queryByRole("dialog", { name: /Consulta de/ })).toBeNull();
+    expect(valor(f, "Paciente")).toBe("a2");
+    expect((f.getByLabelText("Paciente") as HTMLSelectElement).disabled).toBe(true);
+    expect(valor(f, "Profissional")).toBe("p2");
+    expect(valor(f, "Cadeira")).toBe("c2");
+    expect(valor(f, "Data")).toBe("2026-09-30");
+    expect(valor(f, "Início")).toBe("10:30");
+    expect(valor(f, "Duração (min)")).toBe("90");
+  });
+
+  it("remarcar regrava a mesma consulta: o cartão vai para o horário novo e a agenda abre no dia dele", async () => {
+    const f = await remarcando("João Pedro Alves");
+    fireEvent.change(f.getByLabelText("Data"), { target: { value: "2026-10-01" } });
+    fireEvent.change(f.getByLabelText("Início"), { target: { value: "15:00" } });
+    fireEvent.click(botao(f, "Remarcar"));
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(consultas.listar()).toHaveLength(4); // remarcou, não criou outra
+    expect(consultas.obter("k2")).toMatchObject({ inicio: "2026-10-01T15:00", situacao: "agendada" });
+    expect(await screen.findByRole("heading", { name: "quinta-feira, 1 de outubro de 2026" })).toBeTruthy();
+    expect(cartoes("Cadeira 2")[0].textContent).toContain("15:00–16:30");
+  });
+
+  it("a própria consulta não conta como conflito: o horário dela está livre e dá para ir por cima", async () => {
+    const f = await remarcando("João Pedro Alves"); // 10:30–12:00
+    fireEvent.change(f.getByLabelText("Início"), { target: { value: "11:00" } });
+
+    expect(f.queryByRole("alert")).toBeNull();
+    expect(botao(f, "Remarcar").disabled).toBe(false);
+    expect(f.getByRole("button", { name: "10:30" })).toBeTruthy(); // sugestão: o horário atual conta como livre
+  });
+
+  it("conflito com outra consulta trava o botão e diz quem está ocupado", async () => {
+    const f = await remarcando("João Pedro Alves");
+    fireEvent.change(f.getByLabelText("Cadeira"), { target: { value: "c1" } });
+    fireEvent.change(f.getByLabelText("Início"), { target: { value: "08:15" } }); // a Ana ocupa a Cadeira 1 das 08:00 às 08:45
+
+    expect(f.getByRole("alert").textContent).toContain("Cadeira 1 já tem consulta das 08:00 às 08:45 (Ana Beatriz Moura)");
+    expect(botao(f, "Remarcar").disabled).toBe(true);
+  });
+
+  it("a consulta confirmada avisa que volta a agendada, e volta", async () => {
+    const f = await remarcando("Ana Beatriz Moura");
+    expect(f.getByText(/volta para agendada/)).toBeTruthy();
+    fireEvent.change(f.getByLabelText("Início"), { target: { value: "09:00" } });
+    fireEvent.click(botao(f, "Remarcar"));
+
+    expect(cartoes("Cadeira 1")[0].textContent).toContain("Agendada · Dra. Exemplo");
+  });
+
+  it("consulta cujo profissional ficou inativo pede um ativo antes de remarcar", async () => {
+    profissionais.salvar({ ...PROFISSIONAIS[1], ativo: false });
+    const f = await remarcando("João Pedro Alves");
+    fireEvent.click(botao(f, "Remarcar"));
+
+    expect(f.getByText("Escolha um profissional ativo.")).toBeTruthy();
+    expect(consultas.obter("k2")?.inicio).toBe("2026-09-30T10:30");
+  });
+
+  it("só a consulta que aguarda o atendimento remarca e cancela", async () => {
+    await abrir();
+    const aguardando = await abrirCartao("Ana Beatriz Moura");
+    expect(aguardando.getByRole("button", { name: "Remarcar" })).toBeTruthy();
+    expect(aguardando.getByRole("button", { name: "Cancelar consulta" })).toBeTruthy();
+    fireEvent.click(aguardando.getByRole("button", { name: "Iniciar atendimento" }));
+
+    const emAtendimento = await abrirCartao("Ana Beatriz Moura");
+    expect(emAtendimento.queryByRole("button", { name: "Remarcar" })).toBeNull();
+    expect(emAtendimento.queryByRole("button", { name: "Cancelar consulta" })).toBeNull();
+  });
+
+  it("cancelar pede o motivo: sem ele não cancela, com ele a consulta sai da grade e o guarda", async () => {
+    await abrir();
+    const d = await abrirCartao("João Pedro Alves");
+    fireEvent.click(d.getByRole("button", { name: "Cancelar consulta" }));
+
+    expect(d.queryByRole("group", { name: "Mudar a situação" })).toBeNull(); // o campo ocupa o lugar dos botões
+    fireEvent.click(botao(d, "Confirmar cancelamento"));
+    expect(d.getByText("Informe o motivo do cancelamento.")).toBeTruthy();
+    expect(consultas.obter("k2")?.situacao).toBe("agendada");
+
+    fireEvent.change(d.getByLabelText("Motivo do cancelamento"), { target: { value: "Paciente pediu para desmarcar" } });
+    expect(d.queryByText("Informe o motivo do cancelamento.")).toBeNull(); // corrigir limpa o erro
+    fireEvent.click(botao(d, "Confirmar cancelamento"));
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(consultas.obter("k2")).toMatchObject({ situacao: "cancelada", motivoCancelamento: "Paciente pediu para desmarcar" });
+    expect(cartoes("Cadeira 2")).toHaveLength(0);
+    expect(screen.getByText("1 consulta neste dia")).toBeTruthy();
+  });
+
+  it("Voltar desiste de cancelar e traz os botões de volta", async () => {
+    await abrir();
+    const d = await abrirCartao("João Pedro Alves");
+    fireEvent.click(d.getByRole("button", { name: "Cancelar consulta" }));
+    fireEvent.click(d.getByRole("button", { name: "Voltar" }));
+
+    expect(d.getByRole("group", { name: "Mudar a situação" })).toBeTruthy();
+    expect(consultas.obter("k2")?.situacao).toBe("agendada");
   });
 });

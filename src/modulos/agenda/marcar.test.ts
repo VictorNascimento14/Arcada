@@ -1,14 +1,16 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { cadeiras, consultas, pacientes, procedimentos, profissionais } from "@/dados/colecoes";
-import type { Cadeira, Clinica, Consulta, Paciente, Procedimento, Profissional } from "@/dominio";
+import type { Cadeira, Clinica, Consulta, Paciente, Procedimento, Profissional, SituacaoConsulta } from "@/dominio";
 
 import {
   camposDaMarcacao,
+  camposDaRemarcacao,
   DURACAO_MAX,
   DURACAO_MIN,
   horariosSugeridos,
   marcarConsulta,
+  remarcarConsulta,
   restricoesDaAgenda,
   textoDoAviso,
   textoDoBloqueio,
@@ -220,6 +222,90 @@ describe("marcarConsulta", () => {
     expect(marcarConsulta(com({ cadeiraId: "c3" }))).toMatchObject({ ok: false, erros: { cadeiraId: "Escolha uma cadeira ativa." } });
     expect(marcarConsulta(com({ procedimentoId: "pr2" }))).toMatchObject({ ok: false, erros: { procedimentoId: "Escolha um procedimento ativo." } });
     expect(consultas.listar()).toEqual([EXISTENTE]);
+  });
+});
+
+describe("remarcar: o que a consulta não conta contra si mesma", () => {
+  const sobreposta = com({ pacienteId: "a1", profissionalId: "p1", cadeiraId: "c1", hora: "09:15" }); // por cima do próprio 09:00–09:45
+
+  it("`ignorar` tira a própria consulta do conflito", () => {
+    expect(restricoesDaAgenda(sobreposta, [EXISTENTE]).bloqueios).toHaveLength(1);
+    expect(restricoesDaAgenda(sobreposta, [EXISTENTE], "k1").bloqueios).toEqual([]);
+  });
+
+  it("`ignorar` devolve o horário dela às sugestões", () => {
+    const livres = (ignorar?: string) => horariosSugeridos(com({ cadeiraId: "c1", profissionalId: "p1" }), [EXISTENTE], EXPEDIENTE, ignorar);
+
+    expect(livres()).not.toContain("09:00");
+    expect(livres("k1")).toContain("09:00");
+  });
+});
+
+describe("remarcarConsulta", () => {
+  // A k1 (Ana, Cadeira 1, Dra. Exemplo, 09:00–09:45 de 1º/10) é a que se remarca.
+  const remarcar = (extra: Partial<CamposDaMarcacao>) => remarcarConsulta("k1", { ...camposDaRemarcacao(EXISTENTE), ...extra });
+
+  it("o formulário abre com os dados da consulta", () => {
+    expect(camposDaRemarcacao(EXISTENTE)).toEqual({
+      pacienteId: "a1", profissionalId: "p1", cadeiraId: "c1", procedimentoId: "", dia: "2026-10-01", hora: "09:00", duracaoMin: "45",
+    });
+    expect(camposDaRemarcacao({ ...EXISTENTE, procedimentoId: "pr1" }).procedimentoId).toBe("pr1");
+  });
+
+  it("regrava a mesma consulta com o que o formulário trouxe, e só ela", () => {
+    const r = remarcar({ dia: "2026-10-02", hora: "14:00", cadeiraId: "c2", profissionalId: "p2", duracaoMin: "60", procedimentoId: "pr1" });
+
+    const esperada = { ...EXISTENTE, profissionalId: "p2", cadeiraId: "c2", inicio: "2026-10-02T14:00", duracaoMin: 60, procedimentoId: "pr1" };
+    expect(r).toEqual({ ok: true, consulta: esperada });
+    expect(consultas.listar()).toEqual([esperada]); // continua uma só, com o mesmo id
+  });
+
+  it("não conflita consigo mesma: dá para remarcar por cima do próprio horário", () => {
+    expect(remarcar({ hora: "09:15" }).ok).toBe(true);
+    expect(consultas.obter("k1")?.inicio).toBe("2026-10-01T09:15");
+  });
+
+  it("bloqueia o conflito com outra consulta e o feriado, sem gravar", () => {
+    consultas.salvar({ id: "k2", pacienteId: "a2", profissionalId: "p2", cadeiraId: "c2", inicio: "2026-10-01T10:00", duracaoMin: 30, situacao: "agendada" });
+
+    expect(remarcar({ cadeiraId: "c2", hora: "10:15" })).toMatchObject({ ok: false, bloqueios: [{ tipo: "conflito" }] });
+    expect(remarcar({ dia: "2026-09-07" })).toMatchObject({ ok: false, bloqueios: [{ tipo: "feriado" }] });
+    expect(consultas.obter("k1")).toEqual(EXISTENTE);
+  });
+
+  it("a confirmada volta a agendada: o paciente confirmou o horário antigo", () => {
+    consultas.substituirTudo([{ ...EXISTENTE, situacao: "confirmada" }]);
+
+    expect(remarcar({ hora: "10:00" })).toMatchObject({ ok: true, consulta: { situacao: "agendada", inicio: "2026-10-01T10:00" } });
+    expect(consultas.obter("k1")?.situacao).toBe("agendada");
+  });
+
+  it("o paciente não muda, mesmo que o formulário traga outro", () => {
+    expect(remarcar({ pacienteId: "a2", hora: "10:00" })).toMatchObject({ ok: true, consulta: { pacienteId: "a1" } });
+  });
+
+  it("tirar o procedimento no formulário tira da consulta", () => {
+    consultas.substituirTudo([{ ...EXISTENTE, procedimentoId: "pr1" }]);
+
+    expect(remarcar({ procedimentoId: "" }).ok).toBe(true);
+    expect(consultas.obter("k1")).not.toHaveProperty("procedimentoId");
+  });
+
+  it("devolve o erro de cada campo e recusa profissional inativo, sem gravar", () => {
+    expect(remarcar({ hora: "" })).toMatchObject({ ok: false, erros: { hora: expect.any(String) } });
+    expect(remarcar({ profissionalId: "p3" })).toMatchObject({ ok: false, erros: { profissionalId: "Escolha um profissional ativo." } });
+    expect(consultas.obter("k1")).toEqual(EXISTENTE);
+  });
+
+  it.each<SituacaoConsulta>(["em-atendimento", "concluida", "faltou", "cancelada"])("recusa remarcar a consulta %s", (situacao) => {
+    consultas.substituirTudo([{ ...EXISTENTE, situacao }]);
+
+    expect(remarcar({ hora: "10:00" })).toMatchObject({ ok: false, erro: expect.stringContaining("não pode ser remarcada") });
+    expect(consultas.obter("k1")).toEqual({ ...EXISTENTE, situacao });
+  });
+
+  it("recusa a consulta que não existe", () => {
+    expect(remarcarConsulta("some", CAMPOS)).toMatchObject({ ok: false, erro: "Esta consulta não existe mais." });
   });
 });
 
