@@ -5,15 +5,19 @@ import { lancamentos } from "@/dados/colecoes";
 import { useColecao } from "@/dados/useColecao";
 import { formatarReais } from "@/dominio";
 import { dataBR } from "@/modulos/pacientes/exibicao";
-import { GlassCard } from "@/ui";
+import { GlassCard, diaISO } from "@/ui";
 
-/** A aba "Financeiro" da ficha do paciente: os lançamentos dele, do vencimento mais antigo ao mais novo. */
+import { situacaoDaParcela } from "./situacao";
+import SituacaoDaParcelaBadge from "./SituacaoDaParcelaBadge";
+
+/** A aba "Financeiro" da ficha do paciente: os lançamentos dele, do vencimento mais antigo ao mais novo, com a situação de hoje. */
 export default function AbaFinanceiro({ pacienteId }: { pacienteId: string }) {
   const todos = useColecao(lancamentos);
   const doPaciente = useMemo(
     () => todos.filter((l) => l.pacienteId === pacienteId).sort((a, b) => a.vencimento.localeCompare(b.vencimento)),
     [todos, pacienteId],
   );
+  const hoje = diaISO(new Date());
 
   return (
     <GlassCard className="p-[26px]">
@@ -33,9 +37,10 @@ export default function AbaFinanceiro({ pacienteId }: { pacienteId: string }) {
           {doPaciente.map((l) => (
             <li key={l.id} className="flex items-center gap-3 py-3">
               <div className="min-w-0 flex-1">
-                <p className="font-semibold text-foreground-950">Vence em {dataBR(l.vencimento)}</p>
-                <p className="text-sm text-foreground-500">{l.pagoEm ? `Pago em ${dataBR(l.pagoEm)}` : "Em aberto"}</p>
+                <p className="font-semibold text-foreground-950">Vencimento em {dataBR(l.vencimento)}</p>
+                {l.pagoEm && <p className="text-sm text-foreground-500">Pago em {dataBR(l.pagoEm)}</p>}
               </div>
+              <SituacaoDaParcelaBadge situacao={situacaoDaParcela(l, hoje)} />
               <p className="font-semibold tabular-nums text-foreground-950">{formatarReais(l.valor)}</p>
             </li>
           ))}
