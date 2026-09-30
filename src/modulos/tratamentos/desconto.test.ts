@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { PlanoTratamento } from "@/dominio";
 
-import { aplicarDesconto, type Desconto } from "./desconto";
+import { aplicarDesconto, lerDesconto, type Desconto } from "./desconto";
 import { total } from "./plano";
 
 // Um plano com um item só, de `preco` centavos: o subtotal é o próprio preço.
@@ -104,5 +104,32 @@ describe("aplicarDesconto: no plano", () => {
         expect(Number.isInteger(d) && d >= 0 && d <= preco).toBe(true);
       }
     }
+  });
+});
+
+describe("lerDesconto", () => {
+  it.each([
+    ["percentual", "10", { tipo: "percentual", percentual: 10 }],
+    ["percentual", " 12,5 ", { tipo: "percentual", percentual: 12.5 }],
+    ["percentual", "12.5", { tipo: "percentual", percentual: 12.5 }],
+    ["percentual", "0", { tipo: "percentual", percentual: 0 }],
+    ["valor", "50,00", { tipo: "valor", valor: 5000 }],
+    ["valor", "1.234,5", { tipo: "valor", valor: 123_450 }],
+    ["valor", "0", { tipo: "valor", valor: 0 }],
+  ] as const)("%s %j vira o desconto pedido", (tipo, texto, esperado) => {
+    expect(lerDesconto(tipo, texto)).toEqual(esperado);
+  });
+
+  it.each([
+    ["percentual", ""],
+    ["percentual", "-5"],
+    ["percentual", "10%"],
+    ["percentual", "abc"],
+    ["percentual", "1,234"],
+    ["valor", ""],
+    ["valor", "-5"],
+    ["valor", "12,345"],
+  ] as const)("%s %j não é desconto: devolve null", (tipo, texto) => {
+    expect(lerDesconto(tipo, texto)).toBeNull();
   });
 });
