@@ -1,10 +1,11 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { consultas, pacientes, planos } from "@/dados/colecoes";
 import type { Consulta, Paciente } from "@/dominio";
 
+import { retornos } from "./dados";
 import ListaDeRetornos from "./ListaDeRetornos";
 import { linkDeRetorno } from "./mensagem";
 
@@ -35,6 +36,7 @@ beforeEach(() => {
   pacientes.substituirTudo([paciente("ana", "Ana Exemplo"), paciente("bia", "Bia Exemplo"), paciente("caio", "Caio Exemplo"), paciente("dani", "Dani Exemplo"), paciente("edu", "Edu Exemplo")]);
   consultas.substituirTudo([]);
   planos.substituirTudo([]);
+  retornos.substituirTudo([]);
 });
 afterEach(() => vi.useRealTimers());
 
@@ -100,5 +102,66 @@ describe("lista de retornos", () => {
     for (const nome of ["Ana Beatriz Exemplo", "Bia Exemplo"]) {
       expect(screen.getByRole("link", { name: `Marcar consulta para ${nome}` }).getAttribute("href")).toBe("/agenda");
     }
+  });
+});
+
+describe("adiar e dispensar o retorno", () => {
+  const clicar = (nome: string) => fireEvent.click(screen.getByRole("button", { name: nome }));
+
+  it("adia: pede os dias (sete de saída), conta de hoje e leva o paciente para os a vencer, marcado como adiado", () => {
+    consultas.substituirTudo([atendida("ana", "2026-03-25")]); // venceu em 25/09, há 5 dias
+    abrir();
+    clicar("Adiar o retorno de Ana Exemplo");
+
+    const campo = screen.getByLabelText("Adiar por quantos dias?") as HTMLInputElement;
+    expect(campo.value).toBe("7");
+    fireEvent.change(campo, { target: { value: "15" } });
+    clicar("Confirmar");
+
+    expect(retornos.obter("ana")).toEqual({ id: "ana", ultimoAtendimento: "2026-03-25", adiadoAte: "2026-10-15" });
+    expect(screen.getByText("Nenhum retorno vencido.")).toBeTruthy();
+    const aVencer = cartao("A vencer nos próximos 30 dias");
+    expect(aVencer.getByText("Último atendimento em 25/03/2026 · retorno adiado para 15/10/2026")).toBeTruthy();
+    expect(aVencer.getByText("Vence em 15 dias")).toBeTruthy();
+    expect(screen.queryByLabelText("Adiar por quantos dias?")).toBeNull(); // o campo fechou
+  });
+
+  it("mostra o erro do campo quando os dias não servem e deixa o retorno como estava; Voltar fecha sem gravar", () => {
+    consultas.substituirTudo([atendida("ana", "2026-03-25")]);
+    abrir();
+    clicar("Adiar o retorno de Ana Exemplo");
+    fireEvent.change(screen.getByLabelText("Adiar por quantos dias?"), { target: { value: "0" } });
+    clicar("Confirmar");
+
+    expect(screen.getByText("Informe de 1 a 365 dias.")).toBeTruthy();
+    expect(retornos.listar()).toHaveLength(0);
+
+    clicar("Voltar");
+    expect(screen.queryByLabelText("Adiar por quantos dias?")).toBeNull();
+    expect(screen.getByRole("button", { name: "Dispensar o retorno de Ana Exemplo" })).toBeTruthy();
+  });
+
+  it("dispensa com o motivo, que é obrigatório: o paciente sai dos cartões, aparece em Dispensados e Reativar o traz de volta", () => {
+    consultas.substituirTudo([atendida("ana", "2026-03-25")]);
+    abrir();
+    clicar("Dispensar o retorno de Ana Exemplo");
+    clicar("Confirmar");
+    expect(screen.getByText("Diga o motivo da dispensa.")).toBeTruthy();
+    expect(retornos.listar()).toHaveLength(0);
+
+    fireEvent.change(screen.getByLabelText("Motivo da dispensa"), { target: { value: "Mudou de cidade" } });
+    expect(screen.queryByText("Diga o motivo da dispensa.")).toBeNull(); // digitar apaga o erro
+    clicar("Confirmar");
+
+    expect(retornos.obter("ana")).toMatchObject({ dispensadoEm: "2026-09-30", motivo: "Mudou de cidade" });
+    expect(screen.getByText("Nenhum retorno vencido.")).toBeTruthy();
+    const dispensados = cartao("Dispensados");
+    expect(dispensados.getByRole("link", { name: "Ana Exemplo" })).toBeTruthy();
+    expect(dispensados.getByText("Dispensado em 30/09/2026 · motivo: Mudou de cidade")).toBeTruthy();
+
+    clicar("Reativar o retorno de Ana Exemplo");
+    expect(retornos.listar()).toHaveLength(0);
+    expect(cartao("Vencidos").getByText("Vencido há 5 dias")).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Dispensados" })).toBeNull(); // sem dispensado, sem cartão
   });
 });

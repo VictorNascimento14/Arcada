@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import type { Consulta, Paciente, PlanoTratamento } from "@/dominio";
 
-import { JANELA_A_VENCER_DIAS, retornosPendentes } from "./lista";
+import type { EstadoDoRetorno } from "./estado";
+import { JANELA_A_VENCER_DIAS, retornosDispensados, retornosPendentes } from "./lista";
 
 const HOJE = "2026-09-30";
 const paciente = (id: string, nome = id): Paciente => ({ id, nome, nascimento: "1990-01-01", telefone: "" });
@@ -55,12 +56,68 @@ describe("retornosPendentes", () => {
     expect(retornosPendentes(pacientes, consultas, [], HOJE).map((r) => r.paciente.nome)).toEqual(["Bia Exemplo", "Ana Exemplo", "Zeca Exemplo"]);
   });
 
-  it("usa o prazo do procedimento: o mapa passado vale no lugar do padrão", () => {
-    const consultas = [atendida("ana", "2026-08-20", { procedimentoId: "proc-x" })];
+  it("usa o prazo do procedimento feito no último atendimento", () => {
+    const manutencao = [atendida("ana", "2026-08-20", { procedimentoId: "proc-manutencao-aparelho" })]; // 1 mês: venceu em 20/09
+    const limpeza = [atendida("ana", "2026-08-20", { procedimentoId: "proc-profilaxia" })]; // 6 meses: só em fevereiro
 
-    expect(retornosPendentes([paciente("ana")], consultas, [], HOJE)).toEqual([]); // 6 meses: só em fevereiro
-    expect(retornosPendentes([paciente("ana")], consultas, [], HOJE, { "proc-x": 1 })).toMatchObject([
-      { retornoEm: "2026-09-20", situacao: "vencido", dias: 10 },
+    expect(retornosPendentes([paciente("ana")], limpeza, [], HOJE)).toEqual([]);
+    expect(retornosPendentes([paciente("ana")], manutencao, [], HOJE)).toMatchObject([{ retornoEm: "2026-09-20", situacao: "vencido", dias: 10 }]);
+  });
+});
+
+describe("o estado do retorno", () => {
+  const ana = paciente("ana", "Ana Exemplo");
+  const consultas = [atendida("ana", "2026-03-10")]; // retorno em 10/09: venceu há 20 dias
+  const estado = (extra: Partial<EstadoDoRetorno>): EstadoDoRetorno => ({ id: "ana", ultimoAtendimento: "2026-03-10", ...extra });
+
+  it("o adiado vale o dia novo: sai dos vencidos, passa para os a vencer e vem marcado como adiado", () => {
+    expect(retornosPendentes([ana], consultas, [], HOJE)).toMatchObject([{ situacao: "vencido", adiado: false }]);
+    expect(retornosPendentes([ana], consultas, [], HOJE, [estado({ adiadoAte: "2026-10-15" })])).toMatchObject([
+      { retornoEm: "2026-10-15", ultimoAtendimento: "2026-03-10", situacao: "a-vencer", dias: 15, adiado: true },
     ]);
+  });
+
+  it("o adiado para além da janela some da lista e volta quando entra nela", () => {
+    const adiado = [estado({ adiadoAte: "2026-11-15" })];
+
+    expect(retornosPendentes([ana], consultas, [], HOJE, adiado)).toEqual([]);
+    expect(retornosPendentes([ana], consultas, [], "2026-10-20", adiado)).toMatchObject([{ situacao: "a-vencer", dias: 26, adiado: true }]);
+  });
+
+  it("o dispensado sai da lista", () => {
+    expect(retornosPendentes([ana], consultas, [], HOJE, [estado({ dispensadoEm: HOJE, motivo: "Mudou de cidade" })])).toEqual([]);
+  });
+
+  it("o estado de um atendimento antigo e o de outro paciente não valem", () => {
+    const novas = [...consultas, atendida("ana", "2026-04-05")]; // atendida de novo: retorno em 05/10, a vencer
+    const dispensaAntiga = estado({ dispensadoEm: "2026-09-01", motivo: "Mudou de cidade" });
+
+    expect(retornosPendentes([ana], novas, [], HOJE, [dispensaAntiga])).toMatchObject([{ retornoEm: "2026-10-05", adiado: false }]);
+    expect(retornosPendentes([ana], consultas, [], HOJE, [{ ...dispensaAntiga, id: "bia" }])).toHaveLength(1);
+  });
+});
+
+describe("retornosDispensados", () => {
+  const pacientes = [paciente("ana", "Ana Exemplo"), paciente("bia", "Bia Exemplo"), paciente("caio", "Caio Exemplo")];
+  const consultas = [atendida("ana", "2026-03-10"), atendida("bia", "2026-03-10"), atendida("caio", "2026-03-10")];
+  const dispensa = (id: string, dispensadoEm: string, motivo: string): EstadoDoRetorno => ({ id, ultimoAtendimento: "2026-03-10", dispensadoEm, motivo });
+
+  it("lista os dispensados com o motivo, do mais recente ao mais antigo, e deixa de fora o adiado", () => {
+    const estados: EstadoDoRetorno[] = [
+      dispensa("ana", "2026-09-01", "Mudou de cidade"),
+      dispensa("bia", "2026-09-20", "Já foi atendida em outra clínica"),
+      { id: "caio", ultimoAtendimento: "2026-03-10", adiadoAte: "2026-10-15" },
+    ];
+
+    expect(retornosDispensados(pacientes, consultas, [], estados).map((d) => [d.paciente.nome, d.dispensadoEm, d.motivo])).toEqual([
+      ["Bia Exemplo", "2026-09-20", "Já foi atendida em outra clínica"],
+      ["Ana Exemplo", "2026-09-01", "Mudou de cidade"],
+    ]);
+  });
+
+  it("a dispensa de um atendimento antigo deixa de contar quando o paciente é atendido de novo", () => {
+    const novas = [...consultas, atendida("ana", "2026-04-05")];
+
+    expect(retornosDispensados(pacientes, novas, [], [dispensa("ana", "2026-09-01", "Mudou de cidade")])).toEqual([]);
   });
 });
