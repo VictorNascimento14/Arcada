@@ -46,4 +46,9 @@ export const profissionalAtivo = (p: Pick<Profissional, "ativo">): boolean => p.
 export type Cadeira = {
   id: string;
   nome: string;
+  /** Inativa continua no histórico, mas some das escolhas. Sem o campo conta como ativa: use `cadeiraAtiva`. */
+  ativa?: boolean;
 };
+
+/** Ativa é o padrão: a cadeira sem o campo (semente, dado gravado antes dele existir) está ativa. */
+export const cadeiraAtiva = (c: Pick<Cadeira, "ativa">): boolean => c.ativa !== false;
