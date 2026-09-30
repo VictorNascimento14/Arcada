@@ -10,7 +10,7 @@
 // enxergam dentro da mesma aba (o evento `storage` só chega às outras abas).
 
 /** Tudo o que o repositório guarda mora sob este prefixo, uma chave por coleção. */
-const PREFIXO = "arcada:";
+export const PREFIXO = "arcada:";
 
 type Ouvinte = () => void;
 
