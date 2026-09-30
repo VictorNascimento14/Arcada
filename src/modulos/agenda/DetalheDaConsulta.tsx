@@ -5,10 +5,15 @@ import { useColecao } from "@/dados/useColecao";
 import type { Consulta, SituacaoConsulta } from "@/dominio";
 import { Button, Modal, TextField, toast } from "@/ui";
 
+import { linkDeConfirmacao } from "./confirmacao";
 import { rotuloDoDia } from "./dias";
 import { emHora, emMinutos } from "./horarios";
 import { cancelarConsulta, MOTIVO_MAX, mudarSituacao } from "./mudarSituacao";
 import { ACAO_DA_SITUACAO, aguardaAtendimento, podeTransitar, ROTULO_DA_SITUACAO, transicoesDe } from "./situacao";
+
+// O link do WhatsApp tem a cara do botão `ghost` do kit, que é o dos outros dois desta linha.
+const BOTAO_LINK =
+  "press inline-flex items-center justify-center gap-2 rounded-full bg-transparent px-5 py-3 text-sm font-semibold whitespace-nowrap text-primary-800 transition-colors duration-200 hover:bg-primary-900/[0.07]";
 
 type Props = {
   consultaId: string;
@@ -20,7 +25,9 @@ type Props = {
 /**
  * O detalhe da consulta, aberto pelo cartão da agenda: quem, quando, onde e a situação, com um botão para cada
  * passo do atendimento que a situação permite (o primeiro é o seguinte) e, enquanto a consulta aguarda o
- * atendimento, Remarcar e Cancelar consulta. Cancelar pede o motivo num campo que ocupa o lugar dos botões.
+ * atendimento, o link que abre o WhatsApp do paciente com a confirmação pronta, Remarcar e Cancelar consulta. O
+ * link só aparece quando o telefone do paciente serve para o WhatsApp. Cancelar pede o motivo num campo que ocupa o
+ * lugar dos botões.
  * Mudar a situação e cancelar gravam e fecham: o foco volta ao cartão, que já mostra a situação nova. Lê a
  * consulta da coleção, e não de uma cópia: o que ela mostra e oferece é sempre o gravado.
  */
@@ -41,7 +48,8 @@ export default function DetalheDaConsulta({ consultaId, aoFechar, aoRemarcar }: 
   const fim = emHora(emMinutos(inicio) + consulta.duracaoMin);
   const passos = transicoesDe(consulta.situacao).filter((s) => s !== "cancelada");
   const podeCancelar = podeTransitar(consulta.situacao, "cancelada");
-  const podeRemarcar = aguardaAtendimento(consulta.situacao);
+  const aguarda = aguardaAtendimento(consulta.situacao);
+  const whatsapp = aguarda && paciente ? linkDeConfirmacao(paciente, consulta, profissional) : null;
   const campos = [
     { rotulo: "Quando", valor: `${rotuloDoDia(dia)}, das ${inicio} às ${fim}`, largo: true },
     { rotulo: "Profissional", valor: profissional?.nome ?? "Profissional removido" },
@@ -110,9 +118,16 @@ export default function DetalheDaConsulta({ consultaId, aoFechar, aoRemarcar }: 
           ) : (
             <p className="mt-6 text-sm text-foreground-500">Situação final: esta consulta não muda mais.</p>
           )}
-          {(podeRemarcar || podeCancelar) && (
-            <div role="group" aria-label="Remarcar ou cancelar" className="mt-2 flex flex-wrap gap-2">
-              {podeRemarcar && (
+          {(aguarda || podeCancelar) && (
+            <div role="group" aria-label="Outras ações" className="mt-2 flex flex-wrap gap-2">
+              {whatsapp && (
+                <a href={whatsapp} target="_blank" rel="noopener noreferrer" className={BOTAO_LINK}>
+                  <i className="ri-whatsapp-line text-base" aria-hidden="true" />
+                  Enviar confirmação pelo WhatsApp
+                  <span className="sr-only">, abre em outra aba</span>
+                </a>
+              )}
+              {aguarda && (
                 <Button variant="ghost" onClick={() => aoRemarcar(consulta)}>
                   Remarcar
                 </Button>
