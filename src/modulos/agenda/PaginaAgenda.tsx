@@ -5,6 +5,7 @@ import { Button, diaISO, GlassCard, PageShell } from "@/ui";
 import { rotuloDoDia, somarDias } from "./dias";
 import { feriadoDoDia } from "./feriados";
 import GradeDoDia from "./GradeDoDia";
+import MarcarConsulta from "./MarcarConsulta";
 
 // A mesma pílula dos botões de mês do `Calendar` do kit.
 const NAVEGAR =
@@ -13,6 +14,7 @@ const NAVEGAR =
 /** A tela `/agenda`: o dia escolhido por cadeira, com a navegação de dia em dia. Abre no dia de hoje. */
 export default function PaginaAgenda() {
   const [dia, setDia] = useState(() => diaISO(new Date()));
+  const [marcando, setMarcando] = useState(false);
   const hoje = diaISO(new Date());
   const feriado = feriadoDoDia(dia);
 
@@ -33,6 +35,10 @@ export default function PaginaAgenda() {
           <h2 className="ml-1 min-w-0 flex-1 text-[17px] font-bold tracking-[-0.01em] text-foreground-950 first-letter:uppercase">
             {rotuloDoDia(dia)}
           </h2>
+          <Button onClick={() => setMarcando(true)}>
+            <i className="ri-add-line text-base" aria-hidden="true" />
+            Marcar consulta
+          </Button>
         </div>
 
         {feriado && (
@@ -45,6 +51,11 @@ export default function PaginaAgenda() {
         )}
 
         <GradeDoDia dia={dia} />
+
+        {/* Ao marcar, a agenda abre no dia da consulta nova. */}
+        {marcando && (
+          <MarcarConsulta diaInicial={dia} aoFechar={() => setMarcando(false)} aoMarcar={(c) => setDia(c.inicio.slice(0, 10))} />
+        )}
       </main>
     </PageShell>
   );
