@@ -1,6 +1,7 @@
 import { PageShell } from "@/ui";
 
 import Cadeiras from "./Cadeiras";
+import Convenios from "./Convenios";
 import DadosDaClinica from "./DadosDaClinica";
 import ExpedienteDaClinica from "./Expediente";
 import Profissionais from "./Profissionais";
@@ -14,6 +15,7 @@ export default function PaginaClinica() {
         <ExpedienteDaClinica />
         <Profissionais />
         <Cadeiras />
+        <Convenios />
       </main>
     </PageShell>
   );

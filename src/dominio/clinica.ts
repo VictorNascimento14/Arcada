@@ -23,6 +23,8 @@ export type Clinica = {
   /** Sigla da unidade da federação (ex.: `SP`). */
   uf?: string;
   expediente: Expediente;
+  /** Convênios que a clínica aceita, pelo nome, em ordem alfabética e sem repetir (a regra é `modulos/clinica/convenios.ts`). Sem o campo, nenhum foi cadastrado. */
+  convenios?: string[];
 };
 
 /** Quem atende. */

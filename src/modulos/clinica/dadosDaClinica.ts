@@ -10,7 +10,7 @@ export type ErrosDaClinica = Partial<Record<keyof CamposDaClinica, string>>;
 /** Tamanho máximo de cada campo de texto: o cabeçalho impresso não comporta mais que isso. */
 export const LIMITES = { nome: 100, telefone: 20, endereco: 150, cidade: 60 } as const;
 
-const SEMANA_FECHADA: Expediente = { 0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] };
+export const SEMANA_FECHADA: Expediente = { 0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] };
 
 /** Os campos como o formulário os mostra; sem clínica ainda, tudo vazio. */
 export function camposDaClinica(c?: Clinica): CamposDaClinica {
