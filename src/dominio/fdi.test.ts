@@ -6,14 +6,21 @@ import {
   arcada,
   denteValido,
   ehDeciduo,
+  faceValida,
+  facesDoDente,
   lado,
   nomeDente,
+  nomeFace,
   quadrante,
   tipoDente,
 } from "./fdi";
 
 /** De `a` até `b`, contando para cima ou para baixo, com as duas pontas. */
 const de = (a: number, b: number) => Array.from({ length: Math.abs(b - a) + 1 }, (_, k) => a + Math.sign(b - a) * k);
+
+/** A posição do dente, de 1 (incisivo central) a 8; nos decíduos, até 5. Da frente são as posições 1 a 3. */
+const posicao = (n: number) => n % 10;
+const superior = (n: number) => [1, 2, 5, 6].includes(Math.floor(n / 10));
 
 const TODOS = [
   ...DENTES_PERMANENTES.superior,
@@ -60,7 +67,7 @@ describe("denteValido", () => {
   });
 
   it("os derivados do número recusam dente que não existe em vez de adivinhar", () => {
-    for (const f of [quadrante, ehDeciduo, arcada, lado, tipoDente, nomeDente]) expect(() => f(19)).toThrow(RangeError);
+    for (const f of [quadrante, ehDeciduo, arcada, lado, tipoDente, nomeDente, facesDoDente]) expect(() => f(19)).toThrow(RangeError);
   });
 });
 
@@ -129,5 +136,69 @@ describe("nomeDente", () => {
 
   it("cada um dos 52 dentes tem um nome só seu", () => {
     expect(new Set(TODOS.map(nomeDente)).size).toBe(52);
+  });
+});
+
+describe("facesDoDente", () => {
+  it.each([
+    [11, ["V", "M", "D", "P", "I"]], // incisivo superior
+    [13, ["V", "M", "D", "P", "I"]], // canino superior
+    [15, ["V", "M", "D", "P", "O"]], // pré-molar superior
+    [26, ["V", "M", "D", "P", "O"]], // molar superior
+    [32, ["V", "M", "D", "L", "I"]], // incisivo inferior
+    [43, ["V", "M", "D", "L", "I"]], // canino inferior
+    [44, ["V", "M", "D", "L", "O"]], // pré-molar inferior
+    [38, ["V", "M", "D", "L", "O"]], // molar inferior
+    [52, ["V", "M", "D", "P", "I"]], // decíduo: incisivo superior
+    [64, ["V", "M", "D", "P", "O"]], // decíduo: o 4 já é molar, então a face de cima é a oclusal
+    [83, ["V", "M", "D", "L", "I"]], // decíduo: canino inferior
+    [75, ["V", "M", "D", "L", "O"]], // decíduo: molar inferior
+  ])("dente %i: %j", (n, faces) => {
+    expect(facesDoDente(n)).toEqual(faces);
+  });
+
+  it("vale para os 52 dentes: V, M e D, P ou L pela arcada, I ou O pela posição (1 a 3 é da frente)", () => {
+    for (const n of TODOS) {
+      expect(facesDoDente(n)).toEqual(["V", "M", "D", superior(n) ? "P" : "L", posicao(n) <= 3 ? "I" : "O"]);
+    }
+  });
+});
+
+describe("faceValida", () => {
+  it("V, M e D valem em todo dente", () => {
+    for (const n of TODOS) for (const face of ["V", "M", "D"]) expect(faceValida(n, face)).toBe(true);
+  });
+
+  it("I só nos dentes da frente e O só nos de trás, nos permanentes e nos decíduos", () => {
+    for (const n of TODOS) {
+      expect(faceValida(n, "I")).toBe(posicao(n) <= 3);
+      expect(faceValida(n, "O")).toBe(posicao(n) > 3);
+    }
+  });
+
+  it("P só nos superiores e L só nos inferiores", () => {
+    for (const n of TODOS) {
+      expect(faceValida(n, "P")).toBe(superior(n));
+      expect(faceValida(n, "L")).toBe(!superior(n));
+    }
+  });
+
+  it("recusa face que não existe e dente que não existe, sem lançar", () => {
+    for (const face of ["", "v", "X", "VM", "oclusal"]) expect(faceValida(11, face)).toBe(false);
+    for (const n of [0, 19, 56, 90]) expect(faceValida(n, "V")).toBe(false);
+  });
+});
+
+describe("nomeFace", () => {
+  it.each([
+    ["V", "vestibular"],
+    ["M", "mesial"],
+    ["D", "distal"],
+    ["L", "lingual"],
+    ["P", "palatina"],
+    ["O", "oclusal"],
+    ["I", "incisal"],
+  ] as const)("%s é %s", (face, nome) => {
+    expect(nomeFace(face)).toBe(nome);
   });
 });
