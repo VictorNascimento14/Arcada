@@ -7,13 +7,15 @@ import { diaISO, GlassCard } from "@/ui";
 import { alternarSinal, registrarMedida, useExameDoDia } from "./dados";
 import type { Sitio } from "./exame";
 import GradeDeSondagem from "./GradeDeSondagem";
+import IndicesDoExame from "./IndicesDoExame";
 import { CAMPOS_DE_MEDIDA, faixaDoCampo, type CampoMedida, type Sinal } from "./grade";
 
 /**
  * A aba "Periodonto" da ficha do paciente: o exame periodontal de hoje, com a arcada superior e a inferior. Cada
  * dia tem o seu exame — o de hoje começa em branco e os dos dias anteriores ficam guardados (`dados.ts`) — e o
  * que se digita ou se marca é gravado na hora, sem botão de salvar. Valor que não serve é recusado com um aviso, e o campo
- * volta ao que estava. As setas percorrem a grade (`navegar`); Tab segue a ordem natural dos campos.
+ * volta ao que estava. Acima da grade, os índices do exame em cartões. As setas percorrem a grade (`navegar`); Tab
+ * segue a ordem natural dos campos.
  */
 export default function AbaPeriodonto({ pacienteId }: { pacienteId: string }) {
   // A ficha reaproveita a aba ao trocar de paciente: a `key` impede que o aviso de um apareça na tela do outro.
@@ -58,8 +60,8 @@ function ExameDeHoje({ pacienteId }: { pacienteId: string }) {
   }
 
   return (
-    <GlassCard className="flex flex-col gap-4 p-5 md:p-[26px]">
-      <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-4">
+      <GlassCard className="flex flex-col gap-1 p-5 md:p-[26px]">
         <h2 className="text-lg font-bold tracking-[-0.01em] text-foreground-950">Exame periodontal de {dataBR(hoje)}</h2>
         <p className="text-sm text-foreground-500">
           Cada dia tem o seu exame: o de hoje começa em branco e os dos dias anteriores ficam guardados. O que você digita é gravado na
@@ -73,12 +75,15 @@ function ExameDeHoje({ pacienteId }: { pacienteId: string }) {
         <p role="status" className="text-sm text-red-700">
           {aviso}
         </p>
-      </div>
-      <div onKeyDown={navegar} className="flex flex-col gap-8">
-        {ARCADAS.map((arcada) => (
-          <GradeDeSondagem key={arcada} arcada={arcada} dentes={exame?.dentes ?? {}} aoMedir={medir} aoAlternar={alternar} />
-        ))}
-      </div>
-    </GlassCard>
+      </GlassCard>
+      <IndicesDoExame dentes={exame?.dentes ?? {}} />
+      <GlassCard className="p-5 md:p-[26px]">
+        <div onKeyDown={navegar} className="flex flex-col gap-8">
+          {ARCADAS.map((arcada) => (
+            <GradeDeSondagem key={arcada} arcada={arcada} dentes={exame?.dentes ?? {}} aoMedir={medir} aoAlternar={alternar} />
+          ))}
+        </div>
+      </GlassCard>
+    </div>
   );
 }
