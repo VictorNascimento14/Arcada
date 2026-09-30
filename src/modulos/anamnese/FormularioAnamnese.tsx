@@ -5,6 +5,7 @@ import { dataBR } from "@/modulos/pacientes/exibicao";
 import { Button, GlassCard, TextField, toast } from "@/ui";
 import { anamneses, salvarAnamnese, versoesDoPaciente } from "./dados";
 import { LIMITE_DO_DETALHE, LIMITE_DO_TEXTO, PERGUNTAS, SECOES, type RespostaSimNao, type Secao } from "./questionario";
+import SeloAlertas from "./SeloAlertas";
 
 /** O que está na tela: uma pergunta sem chave ainda não foi respondida. `salvarAnamnese` limpa e valida. */
 type Rascunho = Record<string, RespostaSimNao | string>;
@@ -57,6 +58,10 @@ function Formulario({ pacienteId }: Props) {
         {ultima ? `Última versão: ${dataBR(ultima.data)}.` : "Nenhuma anamnese registrada."} Cada vez que você salva, uma nova
         versão é gravada com a data de hoje.
       </p>
+      {/* Os alertas são os da última versão salva, não os do que está sendo digitado. `empty:hidden`: sem alerta, sem espaço. */}
+      <div className="mt-3 empty:hidden">
+        <SeloAlertas pacienteId={pacienteId} />
+      </div>
 
       {/* `noValidate`: as mensagens são as do app, em português e iguais em todo navegador. */}
       <form noValidate onSubmit={enviar} className="mt-6 grid gap-8">

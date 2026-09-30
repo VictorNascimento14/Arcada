@@ -51,6 +51,7 @@ describe("FormularioAnamnese", () => {
     expect(screen.queryAllByRole("radio", { checked: true })).toHaveLength(0);
     for (const p of PERGUNTAS.filter((x) => x.tipo === "texto")) expect(screen.getByLabelText(p.rotulo)).toBeTruthy();
     expect(screen.getByText(/Nenhuma anamnese registrada/)).toBeTruthy();
+    expect(screen.queryByRole("list", { name: "Alertas da anamnese" })).toBeNull();
   });
 
   it("o detalhe só aparece no sim, e o que se digitou antes de mudar para não não é gravado", () => {
@@ -135,5 +136,21 @@ describe("FormularioAnamnese", () => {
     expect(screen.getByRole("alert").textContent).toContain("Não foi possível salvar");
     expect(anamneses.listar()).toEqual([]);
     expect(avisos).toEqual([]);
+  });
+
+  it("mostra no topo os alertas da última versão salva: o que está só no rascunho não conta até salvar", () => {
+    salvarAnamnese("p1", { ...MINIMAS, alergia: { sim: true, detalhe: "Látex" } });
+    render(<FormularioAnamnese pacienteId="p1" />);
+    const alertas = () =>
+      within(screen.getByRole("list", { name: "Alertas da anamnese" }))
+        .getAllByRole("listitem")
+        .map((li) => li.textContent);
+    expect(alertas()).toEqual(["Alergia informada: Látex"]);
+
+    responder(rotulo("gestante"), "Sim");
+    expect(alertas()).toEqual(["Alergia informada: Látex"]);
+
+    salvar();
+    expect(alertas()).toEqual(["Alergia informada: Látex", "Gestante"]);
   });
 });
