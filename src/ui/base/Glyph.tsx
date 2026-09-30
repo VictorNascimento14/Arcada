@@ -29,7 +29,12 @@ export type GlyphName =
   | "menu"
   | "close"
   | "chevron-down"
-  | "panel-left";
+  | "panel-left"
+  | "tooth"
+  | "refresh"
+  | "list"
+  | "building"
+  | "file";
 
 const PATHS: Record<GlyphName, ReactElement> = {
   grid: (
@@ -147,6 +152,33 @@ const PATHS: Record<GlyphName, ReactElement> = {
     <>
       <rect x="3.5" y="4.5" width="17" height="15" rx="4" />
       <path d="M9.5 4.5v15" />
+    </>
+  ),
+  tooth: (
+    <path d="M7.6 4C5.6 4 4 5.8 4 8.1c0 2 .8 3.4 1.3 5 .5 1.7.7 3.6 1.2 5.2.4 1.2 1 1.7 1.7 1.7.9 0 1.2-.9 1.5-2.2l.6-2.6c.2-.8.8-1.2 1.7-1.2s1.5.4 1.7 1.2l.6 2.6c.3 1.3.6 2.2 1.5 2.2.7 0 1.3-.5 1.7-1.7.5-1.6.7-3.5 1.2-5.2.5-1.6 1.3-3 1.3-5C20 5.8 18.4 4 16.4 4c-1.6 0-2.6.9-4.4.9S9.2 4 7.6 4Z" />
+  ),
+  refresh: (
+    <>
+      <path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3" />
+      <path d="M19.5 4.5v4h-4" />
+    </>
+  ),
+  list: (
+    <>
+      <path d="M9.5 6.5h10M9.5 12h10M9.5 17.5h10" />
+      <path d="M4.5 6.5h.01M4.5 12h.01M4.5 17.5h.01" />
+    </>
+  ),
+  building: (
+    <>
+      <rect x="4.5" y="3.5" width="15" height="17" rx="3" />
+      <path d="M9 8h1.5M13.5 8H15M9 12h1.5M13.5 12H15M10.5 20.5v-4h3v4" />
+    </>
+  ),
+  file: (
+    <>
+      <path d="M13.5 3.5H8a3 3 0 0 0-3 3v11a3 3 0 0 0 3 3h8a3 3 0 0 0 3-3V9l-5.5-5.5Z" />
+      <path d="M13.5 3.5V9H19M9 13h6M9 16.5h4" />
     </>
   ),
 };
