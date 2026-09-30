@@ -488,3 +488,45 @@ describe("agenda: visão da semana", () => {
     expect(await screen.findByText("Feriado: Independência do Brasil")).toBeTruthy();
   });
 });
+
+describe("agenda: confirmação pelo WhatsApp", () => {
+  // As sementes usam DDD 00, que o WhatsApp não aceita: o link só existe para telefone válido.
+  const comTelefoneValido = (i: number) => pacientes.salvar({ ...PACIENTES[i], telefone: "(11) 91234-5678" });
+  const link = (d: Detalhe) => d.queryByRole("link", { name: /Enviar confirmação pelo WhatsApp/ }) as HTMLAnchorElement | null;
+
+  it("o link abre o WhatsApp do paciente com a mensagem de confirmação, em outra aba", async () => {
+    comTelefoneValido(1); // João, agendada
+    await abrir();
+    const a = link(await abrirCartao("João Pedro Alves"))!;
+
+    expect(a.href).toMatch(/^https:\/\/wa\.me\/5511912345678\?text=/);
+    expect(decodeURIComponent(a.href.split("?text=")[1])).toContain(
+      "Olá, João! Confirmamos sua consulta em quarta-feira, 30 de setembro de 2026 às 10:30 com Dr. Exemplo.",
+    );
+    expect(a.target).toBe("_blank");
+    expect(a.rel).toContain("noopener");
+  });
+
+  it("a consulta confirmada também tem o link", async () => {
+    comTelefoneValido(0); // Ana, confirmada
+    await abrir();
+
+    expect(link(await abrirCartao("Ana Beatriz Moura"))).toBeTruthy();
+  });
+
+  it("telefone que não serve para o WhatsApp (o DDD 00 das sementes) esconde o link", async () => {
+    await abrir();
+    const d = await abrirCartao("João Pedro Alves");
+
+    expect(link(d)).toBeNull();
+    expect(d.getByRole("button", { name: "Remarcar" })).toBeTruthy(); // o resto da linha continua
+  });
+
+  it("a consulta que já começou não tem o link", async () => {
+    comTelefoneValido(1);
+    await abrir();
+    fireEvent.click((await abrirCartao("João Pedro Alves")).getByRole("button", { name: "Iniciar atendimento" }));
+
+    expect(link(await abrirCartao("João Pedro Alves"))).toBeNull();
+  });
+});
