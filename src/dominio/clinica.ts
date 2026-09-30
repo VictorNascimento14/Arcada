@@ -16,6 +16,12 @@ export type Expediente = Record<DiaDaSemana, FaixaHoraria[]>;
 export type Clinica = {
   id: string;
   nome: string;
+  /** Contato e endereço saem no cabeçalho dos documentos impressos. Todos opcionais. */
+  telefone?: string;
+  endereco?: string;
+  cidade?: string;
+  /** Sigla da unidade da federação (ex.: `SP`). */
+  uf?: string;
   expediente: Expediente;
 };
 
