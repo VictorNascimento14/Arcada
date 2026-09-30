@@ -6,6 +6,7 @@ import { consultas, pacientes, planos } from "@/dados/colecoes";
 import type { Consulta, Paciente } from "@/dominio";
 
 import ListaDeRetornos from "./ListaDeRetornos";
+import { linkDeRetorno } from "./mensagem";
 
 const paciente = (id: string, nome: string): Paciente => ({ id, nome, nascimento: "1990-01-01", telefone: "" });
 /** Consulta concluída em `dia`: o retorno cai 6 meses depois. */
@@ -81,5 +82,23 @@ describe("lista de retornos", () => {
     expect(screen.getByText("Nenhum retorno vencido.")).toBeTruthy();
     expect(screen.getByText("Nenhum retorno a vencer nos próximos 30 dias.")).toBeTruthy();
     expect(screen.queryByRole("listitem")).toBeNull();
+  });
+
+  it("oferece o WhatsApp com a mensagem pronta só a quem tem telefone que serve, e a todos o atalho para a agenda", () => {
+    const ana = { ...paciente("ana", "Ana Beatriz Exemplo"), telefone: "(11) 91234-5678" };
+    pacientes.substituirTudo([ana, paciente("bia", "Bia Exemplo")]); // a Bia não tem telefone
+    consultas.substituirTudo([atendida("ana", "2026-03-25"), atendida("bia", "2026-03-25")]);
+    abrir();
+
+    const whatsapp = screen.getByRole("link", { name: "WhatsApp de Ana Beatriz Exemplo, abre em outra aba" });
+    expect(whatsapp.getAttribute("href")).toBe(linkDeRetorno(ana));
+    expect(whatsapp.getAttribute("href")).toContain(encodeURIComponent("Olá, Ana!"));
+    expect(whatsapp.getAttribute("href")).not.toContain("Beatriz");
+    expect(whatsapp.getAttribute("target")).toBe("_blank");
+    expect(screen.getAllByRole("link", { name: /^WhatsApp/ })).toHaveLength(1);
+
+    for (const nome of ["Ana Beatriz Exemplo", "Bia Exemplo"]) {
+      expect(screen.getByRole("link", { name: `Marcar consulta para ${nome}` }).getAttribute("href")).toBe("/agenda");
+    }
   });
 });

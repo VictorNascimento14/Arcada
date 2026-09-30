@@ -6,6 +6,7 @@ import { useColecao } from "@/dados/useColecao";
 import { dataBR } from "@/modulos/pacientes/exibicao";
 import { Avatar, GlassCard, diaISO } from "@/ui";
 
+import ContatoDoRetorno from "./ContatoDoRetorno";
 import { JANELA_A_VENCER_DIAS, retornosPendentes, type RetornoPendente } from "./lista";
 
 const nDias = (n: number) => `${n} ${n === 1 ? "dia" : "dias"}`;
@@ -61,6 +62,9 @@ function Secao({ titulo, descricao, vazio, retornos }: SecaoProps) {
                   </div>
                 </div>
                 <Prazo situacao={r.situacao} dias={r.dias} />
+                <div role="group" aria-label={`Contato com ${r.paciente.nome}`} className="flex w-full flex-wrap items-center gap-1">
+                  <ContatoDoRetorno paciente={r.paciente} />
+                </div>
               </li>
             ))}
           </ul>
