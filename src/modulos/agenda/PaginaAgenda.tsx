@@ -1,5 +1,6 @@
 import { useId, useState } from "react";
 
+import type { Consulta } from "@/dominio";
 import { Button, diaISO, GlassCard, PageShell } from "@/ui";
 
 import CalendarioDoMes from "./CalendarioDoMes";
@@ -15,11 +16,12 @@ const NAVEGAR =
 
 /**
  * A tela `/agenda`: o dia escolhido por cadeira, com a navegação de dia em dia e o calendário do mês. Abre no
- * dia de hoje. Clicar numa consulta abre o detalhe dela. O calendário fica ao lado da grade em tela larga (`xl`); abaixo disso, atrás do botão Mês.
+ * dia de hoje. Clicar numa consulta abre o detalhe dela, de onde se muda a situação, se remarca e se cancela. O calendário fica ao lado da grade em tela larga (`xl`); abaixo disso, atrás do botão Mês.
  */
 export default function PaginaAgenda() {
   const [dia, setDia] = useState(() => diaISO(new Date()));
-  const [marcando, setMarcando] = useState(false);
+  // O formulário aberto: vazio, marca uma consulta; com `remarcar`, regrava aquela.
+  const [marcando, setMarcando] = useState<{ remarcar?: Consulta } | null>(null);
   const [aberta, setAberta] = useState<string | null>(null); // o id da consulta com o detalhe aberto
   const [mesAberto, setMesAberto] = useState(false);
   const calendarioId = useId();
@@ -57,7 +59,7 @@ export default function PaginaAgenda() {
           <h2 className="order-first basis-full text-[17px] font-bold tracking-[-0.01em] text-foreground-950 first-letter:uppercase md:order-none md:ml-1 md:min-w-0 md:flex-1">
             {rotuloDoDia(dia)}
           </h2>
-          <Button onClick={() => setMarcando(true)}>
+          <Button onClick={() => setMarcando({})}>
             <i className="ri-add-line text-base" aria-hidden="true" />
             <span className="sr-only sm:not-sr-only">Marcar consulta</span>
           </Button>
@@ -81,11 +83,25 @@ export default function PaginaAgenda() {
           </div>
         </div>
 
-        {aberta && <DetalheDaConsulta consultaId={aberta} aoFechar={() => setAberta(null)} />}
+        {aberta && (
+          <DetalheDaConsulta
+            consultaId={aberta}
+            aoFechar={() => setAberta(null)}
+            aoRemarcar={(c) => {
+              setAberta(null);
+              setMarcando({ remarcar: c });
+            }}
+          />
+        )}
 
-        {/* Ao marcar, a agenda abre no dia da consulta nova. */}
+        {/* Ao marcar ou remarcar, a agenda abre no dia da consulta. */}
         {marcando && (
-          <MarcarConsulta diaInicial={dia} aoFechar={() => setMarcando(false)} aoMarcar={(c) => setDia(c.inicio.slice(0, 10))} />
+          <MarcarConsulta
+            diaInicial={dia}
+            remarcar={marcando.remarcar}
+            aoFechar={() => setMarcando(null)}
+            aoMarcar={(c) => setDia(c.inicio.slice(0, 10))}
+          />
         )}
       </main>
     </PageShell>

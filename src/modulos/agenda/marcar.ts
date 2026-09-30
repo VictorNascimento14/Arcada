@@ -1,5 +1,5 @@
 /**
- * Marcar consulta: o que o formulário edita, o que se confere na agenda e a gravação.
+ * Marcar e remarcar consulta: o que o formulário edita, o que se confere na agenda e a gravação.
  *
  * Duas coisas barram a marcação: o **feriado** nacional e o **conflito** (a cadeira ou o profissional já têm
  * consulta que se sobrepõe). O **ponto facultativo** só avisa: quem decide se a clínica abre é a clínica. A tela
@@ -17,6 +17,7 @@ import { conflitosDaConsulta, type Conflito } from "./conflitos";
 import { somarDias } from "./dias";
 import { feriadoDoDia, type Feriado } from "./feriados";
 import { emHora, emMinutos, horariosLivres } from "./horarios";
+import { aguardaAtendimento, ROTULO_DA_SITUACAO } from "./situacao";
 
 export const DURACAO_MIN = 5;
 export const DURACAO_MAX = 480;
@@ -44,6 +45,17 @@ export const camposDaMarcacao = (dia: DataISO): CamposDaMarcacao => ({
   dia,
   hora: "",
   duracaoMin: String(DURACAO_PADRAO),
+});
+
+/** O formulário de uma remarcação: os dados que a consulta já tem. */
+export const camposDaRemarcacao = (c: Consulta): CamposDaMarcacao => ({
+  pacienteId: c.pacienteId,
+  profissionalId: c.profissionalId,
+  cadeiraId: c.cadeiraId,
+  procedimentoId: c.procedimentoId ?? "",
+  dia: c.inicio.slice(0, 10),
+  hora: c.inicio.slice(11),
+  duracaoMin: String(c.duracaoMin),
 });
 
 const FORMATO_DIA = /^\d{4}-\d{2}-\d{2}$/;
@@ -77,11 +89,13 @@ export type Bloqueio = { tipo: "feriado"; feriado: Feriado } | { tipo: "conflito
 /**
  * O que a agenda diz sobre a marcação: `bloqueios` a impedem (feriado, conflito) e `aviso` só chama a atenção
  * (ponto facultativo). Tolera o formulário pela metade: o feriado sai assim que há uma data, e o conflito, só
- * quando há cadeira, profissional, data, início e duração.
+ * quando há cadeira, profissional, data, início e duração. `ignorar` é o id da consulta que está sendo
+ * remarcada: ela não conflita consigo mesma.
  */
 export function restricoesDaAgenda(
   c: CamposDaMarcacao,
   todas: readonly Consulta[],
+  ignorar?: string,
 ): { bloqueios: Bloqueio[]; aviso?: Feriado } {
   const bloqueios: Bloqueio[] = [];
   const feriado = diaValido(c.dia) ? feriadoDoDia(c.dia) : undefined;
@@ -89,7 +103,7 @@ export function restricoesDaAgenda(
 
   const duracaoMin = duracaoDe(c.duracaoMin);
   if (diaValido(c.dia) && FORMATO_HORA.test(c.hora) && duracaoMin !== null && c.cadeiraId && c.profissionalId) {
-    const candidata = { cadeiraId: c.cadeiraId, profissionalId: c.profissionalId, inicio: `${c.dia}T${c.hora}`, duracaoMin };
+    const candidata = { id: ignorar, cadeiraId: c.cadeiraId, profissionalId: c.profissionalId, inicio: `${c.dia}T${c.hora}`, duracaoMin };
     for (const conflito of conflitosDaConsulta(candidata, todas)) bloqueios.push({ tipo: "conflito", conflito });
   }
   return { bloqueios, aviso: feriado?.tipo === "facultativo" ? feriado : undefined };
@@ -97,14 +111,22 @@ export function restricoesDaAgenda(
 
 /**
  * Os inícios livres do dia para essa duração, olhando a cadeira e o profissional já escolhidos (com só um
- * deles, só ele conta). Vazio quando falta a data, a duração ou os dois, e no dia de feriado.
+ * deles, só ele conta). Vazio quando falta a data, a duração ou os dois, e no dia de feriado. `ignorar` é o id
+ * da consulta que está sendo remarcada: o horário dela conta como livre.
  */
-export function horariosSugeridos(c: CamposDaMarcacao, todas: readonly Consulta[], expediente: Expediente): HoraISO[] {
+export function horariosSugeridos(
+  c: CamposDaMarcacao,
+  todas: readonly Consulta[],
+  expediente: Expediente,
+  ignorar?: string,
+): HoraISO[] {
   const duracaoMin = duracaoDe(c.duracaoMin);
   if (!diaValido(c.dia) || duracaoMin === null || (!c.cadeiraId && !c.profissionalId)) return [];
   if (feriadoDoDia(c.dia)?.tipo === "feriado") return [];
   const ocupam = todas.filter(
-    (x) => (c.cadeiraId !== "" && x.cadeiraId === c.cadeiraId) || (c.profissionalId !== "" && x.profissionalId === c.profissionalId),
+    (x) =>
+      x.id !== ignorar &&
+      ((c.cadeiraId !== "" && x.cadeiraId === c.cadeiraId) || (c.profissionalId !== "" && x.profissionalId === c.profissionalId)),
   );
   return horariosLivres(expediente, c.dia, ocupam, duracaoMin);
 }
@@ -129,15 +151,20 @@ export function textoDoBloqueio(b: Bloqueio, nomes: Nomes): string {
 
 export const textoDoAviso = (f: Feriado) => `${f.nome} é ponto facultativo. Confirme se a clínica abre nesse dia antes de marcar.`;
 
+/**
+ * O resultado de marcar ou remarcar. `erro` só vem de `remarcarConsulta`, quando a consulta inteira foi barrada (não
+ * existe mais, ou já não se remarca): `erros` e `bloqueios` vêm vazios.
+ */
 export type ResultadoDaMarcacao =
   | { ok: true; consulta: Consulta }
-  | { ok: false; erros: ErrosDaMarcacao; bloqueios: Bloqueio[] };
+  | { ok: false; erros: ErrosDaMarcacao; bloqueios: Bloqueio[]; erro?: string };
 
 /**
- * Valida, confere a agenda e grava a consulta como `agendada`. Sem gravar, devolve os erros de preenchimento
- * ou os bloqueios. O formulário só oferece quem existe e está ativo; aqui isso se confere de novo.
+ * A conferência de `marcarConsulta` e de `remarcarConsulta`, sem gravar: os erros de preenchimento ou os
+ * bloqueios da agenda, ou `null` quando pode gravar. O formulário só oferece quem existe e está ativo; aqui isso
+ * se confere de novo.
  */
-export function marcarConsulta(c: CamposDaMarcacao): ResultadoDaMarcacao {
+function barrar(c: CamposDaMarcacao, ignorar?: string): (ResultadoDaMarcacao & { ok: false }) | null {
   const erros = validarMarcacao(c);
   if (!erros.pacienteId && !pacientes.obter(c.pacienteId)) erros.pacienteId = "Escolha o paciente.";
   const prof = profissionais.obter(c.profissionalId);
@@ -147,8 +174,14 @@ export function marcarConsulta(c: CamposDaMarcacao): ResultadoDaMarcacao {
   if (c.procedimentoId && !procedimentos.obter(c.procedimentoId)?.ativo) erros.procedimentoId = "Escolha um procedimento ativo.";
   if (Object.keys(erros).length > 0) return { ok: false, erros, bloqueios: [] };
 
-  const { bloqueios } = restricoesDaAgenda(c, consultas.listar());
-  if (bloqueios.length > 0) return { ok: false, erros, bloqueios };
+  const { bloqueios } = restricoesDaAgenda(c, consultas.listar(), ignorar);
+  return bloqueios.length > 0 ? { ok: false, erros, bloqueios } : null;
+}
+
+/** Valida, confere a agenda e grava a consulta como `agendada`. Sem gravar, devolve os erros de preenchimento ou os bloqueios. */
+export function marcarConsulta(c: CamposDaMarcacao): ResultadoDaMarcacao {
+  const barrada = barrar(c);
+  if (barrada) return barrada;
 
   const consulta: Consulta = {
     id: novoId(),
@@ -160,6 +193,36 @@ export function marcarConsulta(c: CamposDaMarcacao): ResultadoDaMarcacao {
     situacao: "agendada",
     ...(c.procedimentoId ? { procedimentoId: c.procedimentoId } : {}),
   };
+  consultas.salvar(consulta);
+  return { ok: true, consulta };
+}
+
+/**
+ * Regrava a consulta `id` com o que o formulário trouxe, conferindo tudo de novo como `marcarConsulta`, mas sem
+ * contar a própria consulta como conflito. O paciente não muda (outro paciente é outra consulta). Só se remarca
+ * a consulta que ainda aguarda o atendimento, e a confirmada volta a `agendada`: o paciente confirmou o horário
+ * antigo, não o novo.
+ */
+export function remarcarConsulta(id: string, c: CamposDaMarcacao): ResultadoDaMarcacao {
+  const atual = consultas.obter(id);
+  if (!atual) return { ok: false, erros: {}, bloqueios: [], erro: "Esta consulta não existe mais." };
+  if (!aguardaAtendimento(atual.situacao)) {
+    return { ok: false, erros: {}, bloqueios: [], erro: `A consulta ${ROTULO_DA_SITUACAO[atual.situacao].toLowerCase()} não pode ser remarcada.` };
+  }
+  const campos = { ...c, pacienteId: atual.pacienteId };
+  const barrada = barrar(campos, id);
+  if (barrada) return barrada;
+
+  const consulta: Consulta = {
+    ...atual,
+    profissionalId: campos.profissionalId,
+    cadeiraId: campos.cadeiraId,
+    inicio: `${campos.dia}T${campos.hora}`,
+    duracaoMin: Number(campos.duracaoMin),
+    situacao: "agendada",
+  };
+  if (campos.procedimentoId) consulta.procedimentoId = campos.procedimentoId;
+  else delete consulta.procedimentoId;
   consultas.salvar(consulta);
   return { ok: true, consulta };
 }

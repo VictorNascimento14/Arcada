@@ -8,10 +8,12 @@ import { Button, Modal, TextField, toast } from "@/ui";
 import { filtrarPacientes } from "../pacientes/busca";
 import {
   camposDaMarcacao,
+  camposDaRemarcacao,
   DURACAO_MAX,
   DURACAO_MIN,
   horariosSugeridos,
   marcarConsulta,
+  remarcarConsulta,
   restricoesDaAgenda,
   textoDoAviso,
   textoDoBloqueio,
@@ -57,8 +59,10 @@ const dataCurta = (dia: DataISO) => `${dia.slice(8, 10)}/${dia.slice(5, 7)}`;
 type Props = {
   /** O dia que a agenda está mostrando: é a data com que o formulário abre. */
   diaInicial: DataISO;
+  /** A consulta que se remarca: o formulário abre com os dados dela e regrava a mesma consulta. */
+  remarcar?: Consulta;
   aoFechar: () => void;
-  /** Chamado com a consulta gravada, antes de fechar. */
+  /** Chamado com a consulta gravada (marcada ou remarcada), antes de fechar. */
   aoMarcar: (consulta: Consulta) => void;
 };
 
@@ -67,12 +71,15 @@ type Props = {
  * conflito aparecem ao vivo e travam o botão; o ponto facultativo só avisa. Os horários livres do dia, para a
  * cadeira e o profissional escolhidos, viram botões que preenchem o início.
  *
+ * Com `remarcar`, é o mesmo formulário regravando aquela consulta: abre com os dados dela, trava o paciente, e a
+ * própria consulta não conta como conflito nem como horário ocupado.
+ *
  * ponytail: o paciente é um `<select>` com a lista inteira, ordenada. Com centenas de pacientes, o próximo
  * degrau é uma busca como a da lista de pacientes.
  */
-export default function MarcarConsulta({ diaInicial, aoFechar, aoMarcar }: Props) {
+export default function MarcarConsulta({ diaInicial, remarcar, aoFechar, aoMarcar }: Props) {
   const formId = useId();
-  const [campos, setCampos] = useState<CamposDaMarcacao>(() => camposDaMarcacao(diaInicial));
+  const [campos, setCampos] = useState<CamposDaMarcacao>(() => (remarcar ? camposDaRemarcacao(remarcar) : camposDaMarcacao(diaInicial)));
   const [erros, setErros] = useState<ErrosDaMarcacao>({});
 
   const todas = useColecao(consultas);
@@ -91,16 +98,26 @@ export default function MarcarConsulta({ diaInicial, aoFechar, aoMarcar }: Props
     setCampos((c) => ({ ...c, procedimentoId: id, duracaoMin: p ? String(p.duracaoMin) : c.duracaoMin }));
   };
 
-  const { bloqueios, aviso } = restricoesDaAgenda(campos, todas);
-  const livres = registro ? horariosSugeridos(campos, todas, registro.expediente) : [];
+  const { bloqueios, aviso } = restricoesDaAgenda(campos, todas, remarcar?.id);
+  const livres = registro ? horariosSugeridos(campos, todas, registro.expediente, remarcar?.id) : [];
   const semBase = !campos.cadeiraId && !campos.profissionalId;
 
   function enviar(e: FormEvent) {
     e.preventDefault();
-    const r = marcarConsulta(campos);
+    const r = remarcar ? remarcarConsulta(remarcar.id, campos) : marcarConsulta(campos);
     setErros(r.ok ? {} : r.erros);
-    if (!r.ok) return;
-    toast("Consulta marcada", `${nomeDe(listaDePacientes, r.consulta.pacienteId)} · ${dataCurta(campos.dia)} às ${campos.hora}`);
+    if (!r.ok) {
+      // A consulta inteira barrada (já não existe, ou já não se remarca): não há campo a corrigir.
+      if (r.erro) {
+        toast("Não foi possível remarcar", r.erro);
+        aoFechar();
+      }
+      return;
+    }
+    toast(
+      remarcar ? "Consulta remarcada" : "Consulta marcada",
+      `${nomeDe(listaDePacientes, r.consulta.pacienteId)} · ${dataCurta(campos.dia)} às ${campos.hora}`,
+    );
     aoMarcar(r.consulta);
     aoFechar();
   }
@@ -108,7 +125,7 @@ export default function MarcarConsulta({ diaInicial, aoFechar, aoMarcar }: Props
   return (
     <Modal
       aberto
-      titulo="Marcar consulta"
+      titulo={remarcar ? "Remarcar consulta" : "Marcar consulta"}
       largura="lg"
       onFechar={aoFechar}
       rodape={
@@ -117,14 +134,21 @@ export default function MarcarConsulta({ diaInicial, aoFechar, aoMarcar }: Props
             Cancelar
           </Button>
           <Button type="submit" form={formId} disabled={bloqueios.length > 0}>
-            Marcar
+            {remarcar ? "Remarcar" : "Marcar"}
           </Button>
         </>
       }
     >
       <form id={formId} onSubmit={enviar} noValidate className="grid gap-4 sm:grid-cols-2">
         <div className="sm:col-span-2">
-          <Selecao id={`${formId}-paciente`} rotulo="Paciente" valor={campos.pacienteId} aoMudar={editar("pacienteId")} erro={erros.pacienteId}>
+          <Selecao
+            id={`${formId}-paciente`}
+            rotulo="Paciente"
+            valor={campos.pacienteId}
+            aoMudar={editar("pacienteId")}
+            erro={erros.pacienteId}
+            desabilitada={!!remarcar}
+          >
             <option value="">Escolha o paciente</option>
             {ordenados.map((p) => (
               <option key={p.id} value={p.id}>
@@ -243,6 +267,11 @@ export default function MarcarConsulta({ diaInicial, aoFechar, aoMarcar }: Props
         {aviso && (
           <p role="status" className="rounded-2xl border border-foreground-950/[0.10] px-4 py-3 text-sm text-foreground-700 sm:col-span-2">
             {textoDoAviso(aviso)}
+          </p>
+        )}
+        {remarcar?.situacao === "confirmada" && (
+          <p role="note" className="rounded-2xl border border-foreground-950/[0.10] px-4 py-3 text-sm text-foreground-700 sm:col-span-2">
+            Esta consulta está confirmada. Ao remarcar, ela volta para agendada: o paciente precisa confirmar o novo horário.
           </p>
         )}
       </form>

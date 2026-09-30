@@ -30,6 +30,12 @@ export function podeTransitar(de: SituacaoConsulta, para: SituacaoConsulta): boo
   return TRANSICOES[de].includes(para);
 }
 
+/**
+ * Se a consulta ainda aguarda o atendimento (agendada ou confirmada): é quando ainda se remarca, e a mensagem de
+ * confirmação ainda faz sentido. Depois que o atendimento começa, ou quando a consulta acaba, não.
+ */
+export const aguardaAtendimento = (situacao: SituacaoConsulta): boolean => situacao === "agendada" || situacao === "confirmada";
+
 /** O nome da situação como aparece na tela. */
 export const ROTULO_DA_SITUACAO: Record<SituacaoConsulta, string> = {
   agendada: "Agendada",

@@ -15,4 +15,6 @@ export type Consulta = {
   /** Procedimento previsto, do catálogo (`procedimentos`). Opcional: uma avaliação ou um retorno pode não ter um. */
   procedimentoId?: string;
   situacao: SituacaoConsulta;
+  /** Por que a consulta foi cancelada: só existe na `cancelada`, e cancelar pela agenda exige um. */
+  motivoCancelamento?: string;
 };
