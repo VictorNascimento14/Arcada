@@ -11,7 +11,7 @@ import { ESPECIALIDADES } from "./catalogo";
 /** A duração vai de 1 minuto a 8 horas: mais que isso não cabe num dia de agenda. */
 export const LIMITES_DO_PROCEDIMENTO = { nome: 100, codigo: 20, especialidade: 60, duracaoMin: 480 } as const;
 
-/** O que o formulário edita: preço e duração como foram digitados, e as duas exigências. */
+/** O que o formulário edita: preço e duração como foram digitados, as duas exigências e se está ativo. */
 export type CamposDoProcedimento = {
   nome: string;
   codigo: string;
@@ -22,10 +22,12 @@ export type CamposDoProcedimento = {
   duracao: string;
   exigeDente: boolean;
   exigeFace: boolean;
+  /** Inativo continua na tabela e no histórico, mas some das escolhas do plano e da agenda. */
+  ativo: boolean;
 };
-export type ErrosDoProcedimento = Partial<Record<Exclude<keyof CamposDoProcedimento, "exigeDente">, string>>;
+export type ErrosDoProcedimento = Partial<Record<Exclude<keyof CamposDoProcedimento, "exigeDente" | "ativo">, string>>;
 
-/** Os campos de um procedimento existente; sem ele, os de um novo (tudo vazio, sem exigência). */
+/** Os campos de um procedimento existente; sem ele, os de um novo (tudo vazio, sem exigência e ativo). */
 export function camposDoProcedimento(p?: Procedimento): CamposDoProcedimento {
   return {
     nome: p?.nome ?? "",
@@ -36,6 +38,7 @@ export function camposDoProcedimento(p?: Procedimento): CamposDoProcedimento {
     duracao: p ? String(p.duracaoMin) : "",
     exigeDente: p?.exigeDente ?? false,
     exigeFace: p?.exigeFace ?? false,
+    ativo: p?.ativo ?? true,
   };
 }
 
@@ -85,9 +88,8 @@ export function validarProcedimento(c: CamposDoProcedimento, outros: readonly Pr
 }
 
 /**
- * Valida e grava: `id` é o procedimento que se edita; sem ele, cria um novo, ativo. Devolve os erros por campo;
- * objeto vazio quer dizer que salvou. O que o formulário não edita (`ativo`, `condicaoResultante`) segue como
- * estava.
+ * Valida e grava: `id` é o procedimento que se edita; sem ele, cria um novo. Devolve os erros por campo; objeto
+ * vazio quer dizer que salvou. O que o formulário não edita (`condicaoResultante`) segue como estava.
  */
 export function salvarProcedimento(campos: CamposDoProcedimento, id?: string): ErrosDoProcedimento {
   const erros = validarProcedimento(campos, procedimentos.listar().filter((p) => p.id !== id));
@@ -95,7 +97,6 @@ export function salvarProcedimento(campos: CamposDoProcedimento, id?: string): E
   if (Object.keys(erros).length > 0 || preco === null) return erros;
   const idFinal = id ?? novoId();
   procedimentos.salvar({
-    ativo: true,
     ...procedimentos.obter(idFinal),
     id: idFinal,
     codigo: campos.codigo.trim() || undefined,
@@ -105,6 +106,7 @@ export function salvarProcedimento(campos: CamposDoProcedimento, id?: string): E
     duracaoMin: Number(campos.duracao.trim()),
     exigeDente: campos.exigeDente,
     exigeFace: campos.exigeFace,
+    ativo: campos.ativo,
   });
   return {};
 }

@@ -149,7 +149,12 @@ export default function ListaProcedimentos() {
                           className="mt-1 h-4 w-4 shrink-0 accent-primary-800"
                         />
                         <span className="min-w-0">
-                          <span className="block font-semibold text-foreground-950">{p.nome}</span>
+                          <span className="block font-semibold text-foreground-950">
+                            {p.nome}
+                            {!p.ativo && (
+                              <span className="ml-2 rounded-full bg-foreground-950/[0.06] px-2.5 py-1 align-middle text-xs font-medium text-foreground-600">Inativo</span>
+                            )}
+                          </span>
                           <span className="block text-sm text-foreground-500">{[p.codigo, p.especialidade, exigencia(p)].filter(Boolean).join(" · ")}</span>
                         </span>
                       </label>

@@ -111,6 +111,29 @@ describe("cadastro de procedimento", () => {
     expect(procedimentos.listar()).toEqual([{ ...inativo, preco: 130000 }]); // `ativo` e a condição resultante seguem como estavam
   });
 
+  it("desativa: «Procedimento ativo» abre marcado no ativo, e desmarcar e salvar o deixa inativo, sem tocar no resto", () => {
+    render(<EditorDeProcedimento procedimento={EXISTENTE} aoFechar={aoFechar} />);
+
+    expect(campo(/procedimento ativo/i).checked).toBe(true);
+    fireEvent.click(campo(/procedimento ativo/i));
+    salvar();
+
+    expect(procedimentos.listar()).toEqual([{ ...EXISTENTE, ativo: false }]);
+    expect(aoFechar).toHaveBeenCalledTimes(1);
+  });
+
+  it("reativa: o inativo abre desmarcado, e marcar e salvar o volta às escolhas", () => {
+    const inativo = { ...EXISTENTE, ativo: false };
+    procedimentos.substituirTudo([inativo]);
+    render(<EditorDeProcedimento procedimento={inativo} aoFechar={aoFechar} />);
+
+    expect(campo(/procedimento ativo/i).checked).toBe(false);
+    fireEvent.click(campo(/procedimento ativo/i));
+    salvar();
+
+    expect(procedimentos.listar()).toEqual([EXISTENTE]);
+  });
+
   it("a face só se marca com o dente: sem ele fica desabilitada, e desmarcar o dente desmarca a face", () => {
     render(<EditorDeProcedimento aoFechar={aoFechar} />);
 
