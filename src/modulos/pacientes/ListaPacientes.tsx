@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 
 import { pacientes } from "@/dados/colecoes";
 import { useColecao } from "@/dados/useColecao";
+import SeloAlertas from "@/modulos/anamnese/SeloAlertas";
 import { Avatar, Button, diaISO, GlassCard, PageShell, TextField } from "@/ui";
 import { filtrarPacientes } from "./busca";
 import { anosDoPaciente, rotuloConvenio, rotuloIdade } from "./exibicao";
@@ -83,6 +84,9 @@ export default function ListaPacientes() {
                               {anos === null ? rotuloConvenio(p) : `${rotuloIdade(anos)} · ${rotuloConvenio(p)}`}
                             </p>
                             {p.telefone && <p className="truncate text-sm text-foreground-500">{p.telefone}</p>}
+                            <div className="mt-1.5 empty:hidden">
+                              <SeloAlertas pacienteId={p.id} />
+                            </div>
                           </div>
                         </GlassCard>
                       </Link>
