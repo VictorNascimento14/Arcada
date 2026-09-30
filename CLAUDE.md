@@ -110,7 +110,7 @@ PRs de módulos diferentes andarem em paralelo sem conflito.
   51–55, 61–65, 71–75, 81–85. Faces: V (vestibular), L/P (lingual ou palatina), M (mesial), D
   (distal), O/I (oclusal ou incisal). A regra mora em `src/dominio/`, com teste.
 - **Nenhum dado real de pessoa** em código, semente, teste, commit ou print. Exemplos estáveis:
-  `Paciente Exemplo` / `paciente@exemplo.com` e `Dra. Exemplo` / `CRO-UF 00000`.
+  `Paciente Exemplo` / `paciente@exemplo.com` e `Dra. Exemplo` / `CRO-SP 00000`.
 - **CPF não entra em semente nem em print.** Todo CPF com dígito verificador válido pode ser de uma
   pessoa real; o teste de validação calcula o número no próprio teste.
 
