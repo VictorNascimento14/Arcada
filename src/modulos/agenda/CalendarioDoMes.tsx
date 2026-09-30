@@ -8,7 +8,7 @@ import { Calendar, diaISO, GlassCard } from "@/ui";
 import { diasComConsulta } from "./dias";
 
 /**
- * O calendário do mês do kit, com o ponto nos dias que têm consulta. Clicar num dia o abre na visão do dia.
+ * O calendário do mês do kit, com o ponto nos dias que têm consulta. Clicar num dia o abre: a agenda passa a mostrar esse dia, ou a semana dele.
  * O mês que ele mostra é dele: anda pelas setas do próprio calendário e não acompanha o dia aberto na grade.
  */
 export default function CalendarioDoMes({ aoAbrirDia }: { aoAbrirDia: (dia: DataISO) => void }) {

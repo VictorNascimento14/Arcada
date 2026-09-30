@@ -9,6 +9,8 @@ type Props = {
   paciente?: Paciente;
   profissional?: Profissional;
   procedimento?: Procedimento;
+  /** O nome da cadeira, numa linha a mais: só na visão da semana, onde a coluna é o dia e não a cadeira. */
+  cadeira?: string;
   /** Abre o detalhe da consulta, onde se muda a situação. */
   aoAbrir: () => void;
 };
@@ -20,7 +22,7 @@ type Props = {
  * não existe. O cartão preenche o `<li>` que a grade posiciona e é, inteiro, o botão que abre o detalhe (com
  * `<span>`, não `<p>`: parágrafo não cabe dentro de botão).
  */
-export default function CartaoDaConsulta({ consulta, paciente, profissional, procedimento, aoAbrir }: Props) {
+export default function CartaoDaConsulta({ consulta, paciente, profissional, procedimento, cadeira, aoAbrir }: Props) {
   const inicio = consulta.inicio.slice(11);
   const fim = emHora(emMinutos(inicio) + consulta.duracaoMin);
   const cor = profissional?.cor;
@@ -39,6 +41,7 @@ export default function CartaoDaConsulta({ consulta, paciente, profissional, pro
         <span className="block truncate text-[13px] font-bold text-foreground-950">{paciente?.nome ?? "Paciente removido"}</span>
         <span className="block truncate text-foreground-600">{`${inicio}–${fim}${procedimento ? ` · ${procedimento.nome}` : ""}`}</span>
         <span className="block truncate text-foreground-600">{`${ROTULO_DA_SITUACAO[consulta.situacao]} · ${profissional?.nome ?? "Profissional removido"}`}</span>
+        {cadeira && <span className="block truncate text-foreground-600">{cadeira}</span>}
       </button>
     </article>
   );
