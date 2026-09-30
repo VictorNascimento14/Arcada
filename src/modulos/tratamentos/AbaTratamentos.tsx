@@ -8,6 +8,7 @@ import { Button, GlassCard } from "@/ui";
 
 import { rotuloItens } from "./exibicao";
 import { total } from "./plano";
+import ProgressoDoPlano from "./ProgressoDoPlano";
 import { criarPlano } from "./planos";
 import SituacaoBadge from "./SituacaoBadge";
 
@@ -40,6 +41,7 @@ export default function AbaTratamentos({ pacienteId }: { pacienteId: string }) {
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold text-foreground-950">Plano {i + 1}</p>
                   <p className="text-sm text-foreground-500">{rotuloItens(plano.itens.length)}</p>
+                  <ProgressoDoPlano plano={plano} className="mt-1.5 max-w-xs" />
                 </div>
                 <SituacaoBadge situacao={plano.situacao} />
                 <p className="font-semibold tabular-nums text-foreground-950">{formatarReais(total(plano))}</p>

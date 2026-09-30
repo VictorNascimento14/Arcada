@@ -10,7 +10,7 @@ import PlanosEmAberto from "./PlanosEmAberto";
 // O `getByText` normaliza o espaço não separável que o Intl põe depois do `R$`; o texto esperado precisa do mesmo tratamento.
 const reais = (centavos: number) => formatarReais(centavos).replace(/\s/g, " ");
 const paciente = (id: string, nome: string): Paciente => ({ id, nome, nascimento: "1990-01-01", telefone: "" });
-const item = (id: string, preco: number): ItemPlano => ({ id, procedimentoId: "p1", preco });
+const item = (id: string, preco: number, realizadoEm?: string): ItemPlano => ({ id, procedimentoId: "p1", preco, ...(realizadoEm ? { realizadoEm } : {}) });
 const plano = (id: string, pacienteId: string, situacao: SituacaoPlano, itens: ItemPlano[] = [], desconto = 0): PlanoTratamento => ({
   id,
   pacienteId,
@@ -47,6 +47,20 @@ describe("planos em aberto", () => {
     for (const texto of ["Ana Exemplo", "1 item", "Proposto", reais(7_000)]) expect(within(links[0]).getByText(texto)).toBeTruthy();
     for (const texto of ["Bruno Exemplo", "2 itens", "Aprovado", reais(14_000)]) expect(within(links[1]).getByText(texto)).toBeTruthy();
     expect(screen.queryByText(reais(99_000))).toBeNull();
+  });
+
+  it("mostra o progresso de cada plano: os itens realizados sobre o total", () => {
+    planos.substituirTudo([
+      plano("andamento", "ana", "em-andamento", [item("i1", 10_000, "2026-09-30"), item("i2", 5_000, "2026-09-30"), item("i3", 5_000)]),
+      plano("novo", "bruno", "proposto", [item("i4", 7_000)]),
+    ]);
+    abrir();
+
+    const [proposto, andamento] = screen.getAllByRole("link"); // propostos primeiro
+    expect(within(proposto).getByRole("progressbar", { name: "Progresso do tratamento: 0 de 1 item realizado" }).getAttribute("aria-valuenow")).toBe("0");
+    const barra = within(andamento).getByRole("progressbar", { name: "Progresso do tratamento: 2 de 3 itens realizados" });
+    expect(barra.getAttribute("aria-valuenow")).toBe("67");
+    expect(within(andamento).getByText("2 de 3 realizados")).toBeTruthy();
   });
 
   it("resume quantos são e quanto somam", () => {

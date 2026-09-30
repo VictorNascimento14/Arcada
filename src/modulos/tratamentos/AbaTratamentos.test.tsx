@@ -11,7 +11,7 @@ const PACIENTE: Paciente = { id: "pac1", nome: "Paciente Exemplo", nascimento: "
 const OUTRO: Paciente = { ...PACIENTE, id: "pac2", nome: "Outro Paciente Exemplo" };
 // O `getByText` normaliza o espaço não separável que o Intl põe depois do `R$`; o texto esperado precisa do mesmo tratamento.
 const reais = (centavos: number) => formatarReais(centavos).replace(/\s/g, " ");
-const item = (id: string, preco: number): ItemPlano => ({ id, procedimentoId: "p1", preco });
+const item = (id: string, preco: number, realizadoEm?: string): ItemPlano => ({ id, procedimentoId: "p1", preco, ...(realizadoEm ? { realizadoEm } : {}) });
 const plano = (id: string, pacienteId: string, extra: Partial<PlanoTratamento> = {}): PlanoTratamento => ({
   id,
   pacienteId,
@@ -52,6 +52,22 @@ describe("aba Tratamentos da ficha", () => {
     expect(links.map((l) => l.getAttribute("href"))).toEqual(["/planos/a", "/planos/c"]);
     for (const texto of ["Plano 1", "2 itens", "Aprovado", reais(14_000)]) expect(within(links[0]).getByText(texto)).toBeTruthy();
     for (const texto of ["Plano 2", "1 item", "Proposto", reais(7_000)]) expect(within(links[1]).getByText(texto)).toBeTruthy();
+  });
+
+  it("mostra o progresso de cada plano: os itens realizados sobre o total; plano sem itens fica sem barra", () => {
+    planos.substituirTudo([
+      plano("a", "pac1", { itens: [item("i1", 10_000, "2026-09-30"), item("i2", 5_000)] }),
+      plano("b", "pac1", { itens: [item("i3", 7_000)] }),
+      plano("c", "pac1"),
+    ]);
+    abrir();
+
+    const [primeiro, segundo, terceiro] = screen.getAllByRole("link");
+    const metade = within(primeiro).getByRole("progressbar", { name: "Progresso do tratamento: 1 de 2 itens realizados" });
+    expect(metade.getAttribute("aria-valuenow")).toBe("50");
+    expect(within(primeiro).getByText("1 de 2 realizados")).toBeTruthy();
+    expect(within(segundo).getByRole("progressbar", { name: "Progresso do tratamento: 0 de 1 item realizado" }).getAttribute("aria-valuenow")).toBe("0");
+    expect(within(terceiro).queryByRole("progressbar")).toBeNull();
   });
 
   it("Novo plano cria um plano proposto para o paciente e abre a tela dele", async () => {
