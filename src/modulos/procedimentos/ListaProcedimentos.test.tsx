@@ -148,3 +148,65 @@ describe("lista de procedimentos", () => {
     expect(linhas()[0].textContent).toContain(formatarReais(20000));
   });
 });
+
+describe("reajuste de preços em lote", () => {
+  const reajustar = () => screen.getByRole("button", { name: "Reajustar preços" }) as HTMLButtonElement;
+  const marcar = (nome: string) => fireEvent.click(screen.getByRole("checkbox", { name: `Selecionar ${nome}` }));
+  const status = () => screen.getByRole("status").textContent;
+
+  it("só habilita o reajuste com procedimento selecionado e conta os selecionados", async () => {
+    await abrir();
+    expect(reajustar().disabled).toBe(true);
+
+    marcar("Profilaxia (limpeza)");
+
+    expect(reajustar().disabled).toBe(false);
+    expect(status()).toBe("3 procedimentos · 1 selecionado");
+
+    marcar("Profilaxia (limpeza)");
+    expect(reajustar().disabled).toBe(true);
+    expect(status()).toBe("3 procedimentos");
+  });
+
+  it("seleciona todos os visíveis, e o reajuste só alcança o que se vê marcado", async () => {
+    const busca = await abrir();
+
+    fireEvent.change(busca, { target: { value: "resina" } });
+    fireEvent.click(screen.getByRole("checkbox", { name: "Selecionar os visíveis" }));
+    expect(status()).toBe("1 de 3 procedimentos · 1 selecionado");
+
+    fireEvent.change(busca, { target: { value: "" } }); // a marca sobrevive ao filtro
+    expect(status()).toBe("3 procedimentos · 1 selecionado");
+    fireEvent.click(screen.getByRole("checkbox", { name: "Selecionar todos" }));
+    expect(status()).toBe("3 procedimentos · 3 selecionados");
+    fireEvent.click(screen.getByRole("checkbox", { name: "Selecionar todos" }));
+    expect(status()).toBe("3 procedimentos");
+
+    marcar("Exodontia simples");
+    fireEvent.change(busca, { target: { value: "profilaxia" } }); // esconde a marcada: nada visível está marcado
+    expect(status()).toBe("1 de 3 procedimentos");
+    expect(reajustar().disabled).toBe(true);
+  });
+
+  it("reajusta os selecionados só depois da prévia, mostra o preço novo e limpa a seleção", async () => {
+    await abrir();
+    marcar("Profilaxia (limpeza)");
+    marcar("Exodontia simples");
+
+    fireEvent.click(reajustar());
+    const dialogo = screen.getByRole("dialog");
+    fireEvent.change(within(dialogo).getByLabelText("Percentual (%)"), { target: { value: "-10" } });
+
+    expect(within(dialogo).getAllByRole("listitem")).toHaveLength(2); // só os dois selecionados
+    expect(procedimentos.obter("p2")!.preco).toBe(18050); // ainda não gravou
+
+    fireEvent.click(within(dialogo).getByRole("button", { name: "Aplicar reajuste" }));
+
+    expect(procedimentos.obter("p2")!.preco).toBe(16245);
+    expect(procedimentos.obter("p3")!.preco).toBe(111110); // 111110,4 centavos
+    expect(procedimentos.obter("p1")!.preco).toBe(22000);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(linhas()[0].textContent).toContain(formatarReais(16245));
+    expect(status()).toBe("3 procedimentos");
+  });
+});

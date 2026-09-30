@@ -7,6 +7,7 @@ import { Button, GlassCard, PageShell, TextField } from "@/ui";
 
 import { especialidadesDe, filtrarProcedimentos } from "./busca";
 import EditorDeProcedimento from "./EditorDeProcedimento";
+import ReajusteDePrecos from "./ReajusteDePrecos";
 
 const contagem = (n: number) => `${n} ${n === 1 ? "procedimento" : "procedimentos"}`;
 
@@ -14,8 +15,8 @@ const contagem = (n: number) => `${n} ${n === 1 ? "procedimento" : "procedimento
 const exigencia = (p: Procedimento) => (p.exigeFace ? "Exige dente e face" : p.exigeDente ? "Exige dente" : undefined);
 
 /**
- * `/procedimentos`: a tabela de procedimentos da clínica, com busca por nome e código, filtro por especialidade e o
- * cadastro e a edição num modal.
+ * `/procedimentos`: a tabela de procedimentos da clínica, com busca por nome e código, filtro por especialidade, o
+ * cadastro e a edição num modal e o reajuste de preços em lote sobre os selecionados.
  *
  * ponytail: a lista inteira vai para a tela, sem paginar. O catálogo tem dezenas de linhas; com centenas, o próximo
  * degrau é paginar ou agrupar por especialidade.
@@ -26,11 +27,32 @@ export default function ListaProcedimentos() {
   const [escolhida, setEscolhida] = useState("");
   // `null`: modal fechado. `{}`: procedimento novo. `{ procedimento }`: edição dele.
   const [editor, setEditor] = useState<{ procedimento?: Procedimento } | null>(null);
+  const [selecao, setSelecao] = useState<ReadonlySet<string>>(new Set());
+  const [reajustando, setReajustando] = useState(false);
   const areas = useMemo(() => especialidadesDe(todos), [todos]);
   // A escolhida some da lista se o último procedimento dela mudar de área: o filtro volta a "Todas".
   const especialidade = areas.includes(escolhida) ? escolhida : "";
   const visiveis = useMemo(() => filtrarProcedimentos(todos, { termo, especialidade }), [todos, termo, especialidade]);
   const filtrando = termo.trim() !== "" || especialidade !== "";
+  // O que se vê marcado é o que o reajuste alcança: o marcado que o filtro esconde continua na seleção, mas fica de fora.
+  const marcados = useMemo(() => visiveis.filter((p) => selecao.has(p.id)), [visiveis, selecao]);
+  const todosMarcados = visiveis.length > 0 && marcados.length === visiveis.length;
+
+  const alternar = (id: string) =>
+    setSelecao((s) => {
+      const novo = new Set(s);
+      if (!novo.delete(id)) novo.add(id);
+      return novo;
+    });
+  const alternarTodos = () =>
+    setSelecao((s) => {
+      const novo = new Set(s);
+      for (const { id } of visiveis) {
+        if (todosMarcados) novo.delete(id);
+        else novo.add(id);
+      }
+      return novo;
+    });
 
   return (
     <PageShell titulo="Procedimentos" detalhe="Cadastro">
@@ -77,10 +99,26 @@ export default function ListaProcedimentos() {
           </GlassCard>
         ) : (
           <>
-            {/* `role="status"`: quem usa leitor de tela ouve quantos sobraram a cada letra digitada. */}
-            <p role="status" className="mt-4 px-1 text-sm text-foreground-500">
-              {filtrando ? `${visiveis.length} de ${contagem(todos.length)}` : contagem(todos.length)}
-            </p>
+            <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 px-1">
+              <label className="flex items-center gap-2 text-sm text-foreground-700">
+                <input
+                  type="checkbox"
+                  checked={todosMarcados}
+                  disabled={visiveis.length === 0}
+                  onChange={alternarTodos}
+                  className="h-4 w-4 accent-primary-800"
+                />
+                {filtrando ? "Selecionar os visíveis" : "Selecionar todos"}
+              </label>
+              {/* `role="status"`: quem usa leitor de tela ouve quantos sobraram a cada letra digitada. */}
+              <p role="status" className="text-sm text-foreground-500">
+                {filtrando ? `${visiveis.length} de ${contagem(todos.length)}` : contagem(todos.length)}
+                {marcados.length > 0 && ` · ${marcados.length} ${marcados.length === 1 ? "selecionado" : "selecionados"}`}
+              </p>
+              <Button variant="secondary" className="w-full sm:ml-auto sm:w-auto" disabled={marcados.length === 0} onClick={() => setReajustando(true)}>
+                Reajustar preços
+              </Button>
+            </div>
 
             {visiveis.length === 0 ? (
               <GlassCard className="mt-3 p-[26px] text-center">
@@ -102,10 +140,19 @@ export default function ListaProcedimentos() {
                 <ul className="divide-y divide-foreground-950/[0.06]">
                   {visiveis.map((p) => (
                     <li key={p.id} className="flex flex-col gap-2 px-3 py-3 sm:flex-row sm:items-center sm:gap-4">
-                      <div className="min-w-0 sm:flex-1">
-                        <p className="font-semibold text-foreground-950">{p.nome}</p>
-                        <p className="text-sm text-foreground-500">{[p.codigo, p.especialidade, exigencia(p)].filter(Boolean).join(" · ")}</p>
-                      </div>
+                      <label className="flex min-w-0 cursor-pointer items-start gap-3 sm:flex-1">
+                        <input
+                          type="checkbox"
+                          aria-label={`Selecionar ${p.nome}`}
+                          checked={selecao.has(p.id)}
+                          onChange={() => alternar(p.id)}
+                          className="mt-1 h-4 w-4 shrink-0 accent-primary-800"
+                        />
+                        <span className="min-w-0">
+                          <span className="block font-semibold text-foreground-950">{p.nome}</span>
+                          <span className="block text-sm text-foreground-500">{[p.codigo, p.especialidade, exigencia(p)].filter(Boolean).join(" · ")}</span>
+                        </span>
+                      </label>
                       <div className="flex items-center justify-between gap-3 sm:justify-end">
                         <div className="sm:text-right">
                           <p className="font-bold tabular-nums text-foreground-950">{formatarReais(p.preco)}</p>
@@ -124,6 +171,9 @@ export default function ListaProcedimentos() {
         )}
 
         {editor && <EditorDeProcedimento procedimento={editor.procedimento} aoFechar={() => setEditor(null)} />}
+        {reajustando && (
+          <ReajusteDePrecos escolhidos={marcados} aoFechar={() => setReajustando(false)} aoAplicar={() => setSelecao(new Set())} />
+        )}
       </main>
     </PageShell>
   );
