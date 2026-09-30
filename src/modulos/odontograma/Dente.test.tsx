@@ -5,7 +5,7 @@ import type { Face } from "@/dominio/odontologia";
 
 import Dente from "./Dente";
 
-const face = (nome: string, dente: number) => screen.getByRole("button", { name: `face ${nome} do dente ${dente}` });
+const face = (nome: string, dente: number) => screen.getByRole("button", { name: new RegExp(`^face ${nome} do dente ${dente}`) });
 
 describe("Dente", () => {
   it("mostra o número acima do desenho e dá ao desenho o nome do dente", () => {
@@ -98,5 +98,53 @@ describe("Dente", () => {
     const erro = vi.spyOn(console, "error").mockImplementation(() => {});
     expect(() => render(<Dente numero={19} />)).toThrow(RangeError);
     erro.mockRestore();
+  });
+});
+
+describe("Dente: condições", () => {
+  it("escreve a condição no nome da face marcada e põe o símbolo dela no desenho", () => {
+    render(<Dente numero={16} marcas={[{ dente: 16, face: "M", condicao: "carie" }]} />);
+
+    const marcada = face("mesial", 16);
+    expect(marcada.getAttribute("aria-label")).toBe("face mesial do dente 16: cárie");
+    expect(marcada.querySelector('[data-simbolo="carie"]')).toBeTruthy();
+    expect(screen.getAllByRole("button").filter((f) => f.querySelector("[data-simbolo]"))).toEqual([marcada]);
+  });
+
+  it("lista as condições do dente inteiro no nome do desenho e as desenha sem pegar o clique das faces", () => {
+    render(<Dente numero={16} marcas={[{ dente: 16, condicao: "tratamentoDeCanal" }, { dente: 16, condicao: "coroa" }]} />);
+
+    const desenho = screen.getByRole("group", {
+      name: "Dente 16, primeiro molar superior direito. Condições do dente: tratamento de canal, coroa",
+    });
+    expect(desenho.querySelector('[data-simbolo="tratamentoDeCanal"]')).toBeTruthy();
+    expect(desenho.querySelector('[data-simbolo="coroa"]')?.getAttribute("pointer-events")).toBe("none");
+    expect(screen.getAllByRole("button").some((f) => f.querySelector("[data-simbolo]"))).toBe(false);
+  });
+
+  it("mostra só as marcas do próprio dente", () => {
+    render(<Dente numero={16} marcas={[{ dente: 26, face: "M", condicao: "carie" }, { dente: 26, condicao: "coroa" }]} />);
+
+    expect(face("mesial", 16).getAttribute("aria-label")).toBe("face mesial do dente 16");
+    expect(screen.getByRole("group", { name: "Dente 16, primeiro molar superior direito" })).toBeTruthy();
+    expect(document.querySelector("[data-simbolo]")).toBeNull();
+  });
+
+  it("faz do número um botão só quando há ação para o dente inteiro", () => {
+    const aoClicar = vi.fn();
+    const { rerender } = render(<Dente numero={16} />);
+    expect(screen.queryByRole("button", { name: "dente 16 inteiro" })).toBeNull();
+
+    rerender(<Dente numero={16} onNumero={aoClicar} />);
+    fireEvent.click(screen.getByRole("button", { name: "dente 16 inteiro" }));
+    expect(aoClicar).toHaveBeenCalledTimes(1);
+  });
+
+  it("marca as faces como indisponíveis (aria-disabled) enquanto não há ação para elas", () => {
+    const { rerender } = render(<Dente numero={16} />);
+    expect(face("mesial", 16).getAttribute("aria-disabled")).toBe("true");
+
+    rerender(<Dente numero={16} onFace={() => {}} />);
+    expect(face("mesial", 16).hasAttribute("aria-disabled")).toBe(false);
   });
 });
