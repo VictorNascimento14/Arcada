@@ -200,6 +200,27 @@ describe("AbaPeriodonto", () => {
     expect(exameDeHoje()?.dentes[36]?.sitios).toEqual({ DL: { supuracao: true } });
   });
 
+  it("os índices acima da grade acompanham o que se digita e se marca, e só contam sítio medido", () => {
+    render(<AbaPeriodonto pacienteId="p1" />);
+    const indices = within(screen.getByRole("region", { name: "Índices do exame" }));
+    expect(indices.getAllByText("—")).toHaveLength(2); // o percentual e a média não existem ainda
+    expect(indices.getAllByText("Nenhum sítio medido")).toHaveLength(3);
+
+    digitar(campo("Profundidade", 16, "mesiovestibular"), "3");
+    digitar(campo(MARGEM, 16, "mesiovestibular"), "0"); // inserção 3
+    digitar(campo("Profundidade", 16, "vestibular"), "5"); // sem margem: sem inserção
+    fireEvent.click(campo("Sangramento", 16, "mesiovestibular"));
+
+    expect(indices.getByText("50%")).toBeTruthy(); // 1 dos 2 sítios medidos
+    expect(indices.getByText("4,0")).toBeTruthy(); // (3 + 5) / 2
+    expect(indices.getAllByText("2 sítios medidos")).toHaveLength(2);
+    expect(indices.getByText("de 2 sítios medidos")).toBeTruthy();
+    expect(indices.getAllByText("1")).toHaveLength(2); // um sítio com 4 mm ou mais e um com inserção de 3 mm ou mais
+
+    fireEvent.click(campo("Sangramento", 26, "palatino")); // sangramento num sítio sem profundidade não entra
+    expect(indices.getByText("50%")).toBeTruthy();
+  });
+
   describe("teclado", () => {
     const tecla = (alvo: HTMLElement, key: string, mais: KeyboardEventInit = {}) => fireEvent.keyDown(alvo, { key, ...mais });
     const foco = () => document.activeElement?.getAttribute("aria-label");
