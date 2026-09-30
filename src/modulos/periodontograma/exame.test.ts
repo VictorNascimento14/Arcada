@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { indicesDoExame, nivelDeInsercao, type ExamePerio } from "./exame";
+import { indicesDoExame, nivelDeInsercao, SITIOS, type ExamePerio, type MedidaSitio, type Sitio } from "./exame";
 
 /**
  * O dente 16 com os seis sítios. Ao lado de cada um, o que ele acrescenta aos índices: 6 sítios medidos,
@@ -71,6 +71,14 @@ describe("indicesDoExame", () => {
       26: { sitios: { V: { margem: 2, sangramento: true } } }, // sangramento anotado, mas sem profundidade
     };
     expect(indicesDoExame(exame)).toEqual(indicesDoExame(SEIS_SITIOS));
+  });
+
+  it("não conta a supuração em nenhum índice: ela é só registro", () => {
+    const sitios = SEIS_SITIOS[16]?.sitios ?? {};
+    const comPus: ExamePerio = {
+      16: { sitios: Object.fromEntries(SITIOS.map((s) => [s, { ...sitios[s], supuracao: true }])) as Partial<Record<Sitio, MedidaSitio>> },
+    };
+    expect(indicesDoExame(comPus)).toEqual(indicesDoExame(SEIS_SITIOS));
   });
 
   it("não tem percentual nem média sem nenhum sítio medido", () => {

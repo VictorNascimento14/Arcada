@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { pacientes } from "@/dados/colecoes";
 import type { Paciente } from "@/dominio";
 
-import { examesPerio, registrarMedida, type ExameSalvo } from "./dados";
+import { alternarSinal, examesPerio, registrarMedida, type ExameSalvo } from "./dados";
 
 // Fictícios, sem CPF.
 const ANA: Paciente = { id: "p1", nome: "Ana Beatriz Moura", nascimento: "1985-02-03", telefone: "(11) 90000-0002" };
@@ -89,6 +89,34 @@ describe("registrarMedida", () => {
   it("recusa dente que a FDI não tem e paciente que não existe", () => {
     expect(registrarMedida("p1", 19, "MV", "profundidade", 3)).toBe(false);
     expect(registrarMedida("nao-existe", 16, "MV", "profundidade", 3)).toBe(false);
+
+    expect(examesPerio.listar()).toEqual([]);
+  });
+});
+
+describe("alternarSinal", () => {
+  it("liga o sinal do sítio no exame de hoje e o desliga no segundo toque, tirando o campo", () => {
+    expect(alternarSinal("p1", 16, "MV", "sangramento")).toBe(true);
+    expect(exameDe("p1", "2026-09-30")?.dentes[16]?.sitios?.MV).toEqual({ sangramento: true });
+
+    expect(alternarSinal("p1", 16, "MV", "sangramento")).toBe(true);
+    const medida = exameDe("p1", "2026-09-30")?.dentes[16]?.sitios?.MV ?? {};
+    expect(medida).toEqual({});
+    expect("sangramento" in medida).toBe(false);
+  });
+
+  it("sangramento e supuração são independentes entre si e convivem com as medidas do sítio", () => {
+    registrarMedida("p1", 16, "MV", "profundidade", 4);
+    alternarSinal("p1", 16, "MV", "sangramento");
+    alternarSinal("p1", 16, "MV", "supuracao");
+    alternarSinal("p1", 16, "MV", "sangramento");
+
+    expect(exameDe("p1", "2026-09-30")?.dentes[16]?.sitios).toEqual({ MV: { profundidade: 4, supuracao: true } });
+  });
+
+  it("recusa dente que a FDI não tem e paciente que não existe, sem gravar", () => {
+    expect(alternarSinal("p1", 19, "MV", "sangramento")).toBe(false);
+    expect(alternarSinal("nao-existe", 16, "MV", "supuracao")).toBe(false);
 
     expect(examesPerio.listar()).toEqual([]);
   });

@@ -32,6 +32,12 @@ export const CAMPOS_DE_MEDIDA: Record<CampoMedida, { rotulo: string; min: number
   margem: { rotulo: "Margem (+ recessão, − coronal)", min: -15, max: 15 },
 };
 
+/** Os sinais de um sítio: marcas de sim ou não, que se ligam e se desligam. */
+export type Sinal = "sangramento" | "supuracao";
+
+/** O nome curto de cada sinal: cabeçalho da coluna e começo do nome de cada marca. */
+export const ROTULOS_DE_SINAL: Record<Sinal, string> = { sangramento: "Sangramento", supuracao: "Supuração" };
+
 /**
  * Se `valor` serve ao campo: inteiro e dentro do intervalo.
  * ponytail: milímetro inteiro, que é como a sonda é graduada. Meio milímetro pede mudar o `step` do campo

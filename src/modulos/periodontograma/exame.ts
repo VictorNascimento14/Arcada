@@ -24,6 +24,8 @@ export type MedidaSitio = {
   margem?: number;
   /** Sangramento à sondagem: houve ou não. */
   sangramento?: boolean;
+  /** Supuração: houve saída de pus no sítio ou não. É só registro: nenhum índice do exame a conta. */
+  supuracao?: boolean;
 };
 
 export type DentePerio = {

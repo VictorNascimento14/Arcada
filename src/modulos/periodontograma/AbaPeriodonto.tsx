@@ -4,15 +4,15 @@ import type { Arcada, NumeroDente } from "@/dominio";
 import { dataBR } from "@/modulos/pacientes/exibicao";
 import { diaISO, GlassCard } from "@/ui";
 
-import { registrarMedida, useExameDoDia } from "./dados";
+import { alternarSinal, registrarMedida, useExameDoDia } from "./dados";
 import type { Sitio } from "./exame";
 import GradeDeSondagem from "./GradeDeSondagem";
-import { CAMPOS_DE_MEDIDA, faixaDoCampo, type CampoMedida } from "./grade";
+import { CAMPOS_DE_MEDIDA, faixaDoCampo, type CampoMedida, type Sinal } from "./grade";
 
 /**
  * A aba "Periodonto" da ficha do paciente: o exame periodontal de hoje, com a arcada superior e a inferior. Cada
  * dia tem o seu exame — o de hoje começa em branco e os dos dias anteriores ficam guardados (`dados.ts`) — e o
- * que se digita é gravado na hora, sem botão de salvar. Valor que não serve é recusado com um aviso, e o campo
+ * que se digita ou se marca é gravado na hora, sem botão de salvar. Valor que não serve é recusado com um aviso, e o campo
  * volta ao que estava. As setas percorrem a grade (`navegar`); Tab segue a ordem natural dos campos.
  */
 export default function AbaPeriodonto({ pacienteId }: { pacienteId: string }) {
@@ -53,6 +53,10 @@ function ExameDeHoje({ pacienteId }: { pacienteId: string }) {
     setAviso(gravou ? "" : `${CAMPOS_DE_MEDIDA[campo].rotulo}: use um número inteiro de ${faixaDoCampo(campo)}.`);
   }
 
+  function alternar(dente: NumeroDente, sitio: Sitio, sinal: Sinal) {
+    setAviso(alternarSinal(pacienteId, dente, sitio, sinal) ? "" : "Não foi possível gravar: o paciente não foi encontrado.");
+  }
+
   return (
     <GlassCard className="flex flex-col gap-4 p-5 md:p-[26px]">
       <div className="flex flex-col gap-1">
@@ -62,8 +66,9 @@ function ExameDeHoje({ pacienteId }: { pacienteId: string }) {
           hora.
         </p>
         <p className="text-sm text-foreground-500">
-          Medidas em milímetros, sempre inteiras: profundidade de {faixaDoCampo("profundidade")} e margem de {faixaDoCampo("margem")}. Tab e as
-          setas percorrem os campos: direita e esquerda, de sítio em sítio; cima e baixo, de dente em dente.
+          Medidas em milímetros, sempre inteiras: profundidade de {faixaDoCampo("profundidade")} e margem de {faixaDoCampo("margem")}. Sangramento e
+          supuração se marcam por sítio, com um clique. Tab e as setas percorrem os campos: direita e esquerda, de sítio em
+          sítio; cima e baixo, de dente em dente.
         </p>
         <p role="status" className="text-sm text-red-700">
           {aviso}
@@ -71,7 +76,7 @@ function ExameDeHoje({ pacienteId }: { pacienteId: string }) {
       </div>
       <div onKeyDown={navegar} className="flex flex-col gap-8">
         {ARCADAS.map((arcada) => (
-          <GradeDeSondagem key={arcada} arcada={arcada} dentes={exame?.dentes ?? {}} aoMedir={medir} />
+          <GradeDeSondagem key={arcada} arcada={arcada} dentes={exame?.dentes ?? {}} aoMedir={medir} aoAlternar={alternar} />
         ))}
       </div>
     </GlassCard>
