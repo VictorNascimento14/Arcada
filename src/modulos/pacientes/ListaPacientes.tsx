@@ -25,15 +25,25 @@ export default function ListaPacientes() {
   return (
     <PageShell titulo="Pacientes">
       <main className="mx-auto w-full max-w-5xl px-4 pb-28 pt-2 md:px-6 md:pb-10">
-        <TextField
-          label="Buscar paciente"
-          icon="ri-search-line"
-          type="search"
-          placeholder="Nome ou telefone"
-          autoComplete="off"
-          value={termo}
-          onChange={(e) => setTermo(e.target.value)}
-        />
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+          <TextField
+            className="sm:flex-1"
+            label="Buscar paciente"
+            icon="ri-search-line"
+            type="search"
+            placeholder="Nome ou telefone"
+            autoComplete="off"
+            value={termo}
+            onChange={(e) => setTermo(e.target.value)}
+          />
+          <Link
+            to="/pacientes/novo"
+            className="press inline-flex items-center justify-center gap-2 rounded-full bg-primary-900 px-5 py-3 text-sm font-semibold whitespace-nowrap text-primary-50 shadow-nav-active transition-colors hover:bg-primary-800"
+          >
+            <i className="ri-user-add-line" aria-hidden="true" />
+            Novo paciente
+          </Link>
+        </div>
 
         {todos.length === 0 ? (
           <GlassCard className="mt-6 p-[26px] text-center">

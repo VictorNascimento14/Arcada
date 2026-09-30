@@ -32,7 +32,11 @@ async function abrir() {
 }
 
 /** Os cartões da lista (links para a ficha), na ordem da tela. */
-const cartoes = () => screen.queryAllByRole("link").filter((a) => a.getAttribute("href")?.startsWith("/pacientes/"));
+const cartoes = () =>
+  screen.queryAllByRole("link").filter((a) => {
+    const href = a.getAttribute("href") ?? "";
+    return href.startsWith("/pacientes/") && href !== "/pacientes/novo";
+  });
 
 describe("lista de pacientes", () => {
   it("entra na coluna lateral pelo registro de módulos e o item leva à lista", async () => {
@@ -82,6 +86,11 @@ describe("lista de pacientes", () => {
     fireEvent.click(screen.getByRole("button", { name: "Limpar busca" }));
     expect(campo.value).toBe("");
     expect(cartoes()).toHaveLength(3);
+  });
+
+  it("o botão Novo paciente leva ao cadastro", async () => {
+    await abrir();
+    expect(screen.getByRole("link", { name: "Novo paciente" }).getAttribute("href")).toBe("/pacientes/novo");
   });
 
   it("sem nenhum paciente cadastrado mostra o estado vazio, não a busca sem resultado", async () => {
