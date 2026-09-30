@@ -1,9 +1,10 @@
 // Notação FDI (ISO 3950): quais números de dente existem e o que cada um diz — quadrante, dentição, arcada,
-// lado do paciente, tipo e nome (ADR-004 do cofre). Tudo sai do próprio número; nada disso é guardado à parte.
+// lado do paciente, tipo, nome e faces (ADR-004 do cofre). Tudo sai do próprio número; nada disso é guardado
+// à parte.
 // Os números não são contínuos (depois do 18 vem o 21, não o 19): iterar e ordenar é pelas listas abaixo,
 // nunca por `n + 1`.
 
-import type { NumeroDente } from "./odontologia";
+import type { Face, NumeroDente } from "./odontologia";
 
 /** Primeiro dígito do número: de 1 a 4 nos permanentes e de 5 a 8 nos decíduos, na mesma ordem. */
 export type Quadrante = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
@@ -123,4 +124,40 @@ export function nomeDente(n: NumeroDente): string {
   const primeiro = tipos.indexOf(tipo);
   const ordinal = tipos.lastIndexOf(tipo) > primeiro ? ORDINAIS[posicao - 1 - primeiro] : undefined;
   return [ordinal, TIPOS_DENTE[tipo], ehDeciduo(n) ? "decíduo" : undefined, arcada(n), lado(n)].filter(Boolean).join(" ");
+}
+
+// Incisivos e caninos cortam: a face de cima deles é a incisal. Pré-molares e molares mastigam: é a oclusal.
+const DA_FRENTE: readonly TipoDente[] = ["incisivoCentral", "incisivoLateral", "canino"];
+
+/**
+ * As cinco faces do dente, sempre nesta ordem: V, M, D, a que olha para dentro da boca — P (palatina) no
+ * superior, L (lingual) no inferior — e a de cima: I (incisal) nos incisivos e caninos, O (oclusal) nos
+ * pré-molares e molares. Lança `RangeError` se o dente não existe.
+ */
+export function facesDoDente(n: NumeroDente): Face[] {
+  return ["V", "M", "D", arcada(n) === "superior" ? "P" : "L", DA_FRENTE.includes(tipoDente(n)) ? "I" : "O"];
+}
+
+/**
+ * Se `face` existe no dente: I só nos da frente, O só nos de trás, P só nos superiores e L só nos inferiores.
+ * Serve a dado guardado ou digitado — por isso `face` é texto e, para dente que não existe, a resposta é
+ * `false`, sem lançar.
+ */
+export function faceValida(n: NumeroDente, face: string): boolean {
+  return denteValido(n) && facesDoDente(n).some((f) => f === face);
+}
+
+const NOMES_FACE: Record<Face, string> = {
+  V: "vestibular",
+  M: "mesial",
+  D: "distal",
+  L: "lingual",
+  P: "palatina",
+  O: "oclusal",
+  I: "incisal",
+};
+
+/** O nome da face por extenso, em minúsculas: `mesial`, `palatina`, `incisal`… */
+export function nomeFace(face: Face): string {
+  return NOMES_FACE[face];
 }
