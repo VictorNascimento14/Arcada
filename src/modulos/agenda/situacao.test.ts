@@ -9,7 +9,7 @@ const SITUACOES: SituacaoConsulta[] = ["agendada", "confirmada", "em-atendimento
 describe("transicoesDe", () => {
   // A ordem importa: é a dos botões da tela.
   it.each<[SituacaoConsulta, SituacaoConsulta[]]>([
-    ["agendada", ["confirmada", "faltou", "cancelada"]],
+    ["agendada", ["confirmada", "em-atendimento", "faltou", "cancelada"]],
     ["confirmada", ["em-atendimento", "faltou", "cancelada"]],
     ["em-atendimento", ["concluida"]],
     ["concluida", []],
@@ -21,12 +21,13 @@ describe("transicoesDe", () => {
 });
 
 describe("podeTransitar", () => {
-  it("aceita só as sete transições da regra, entre as 36 combinações de situação", () => {
+  it("aceita só as oito transições da regra, entre as 36 combinações de situação", () => {
     const aceitas = SITUACOES.flatMap((de) =>
       SITUACOES.filter((para) => podeTransitar(de, para)).map((para) => `${de} > ${para}`),
     );
     expect(aceitas).toEqual([
       "agendada > confirmada",
+      "agendada > em-atendimento",
       "agendada > faltou",
       "agendada > cancelada",
       "confirmada > em-atendimento",

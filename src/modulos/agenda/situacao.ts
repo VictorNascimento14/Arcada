@@ -1,6 +1,7 @@
 /**
  * Situação da consulta: para onde ela pode ir a partir de onde está. O caminho é agendada →
- * confirmada → em atendimento → concluída; da agendada e da confirmada a consulta também pode
+ * confirmada → em atendimento → concluída, e a agendada também entra direto em atendimento (quem chega
+ * sem ter confirmado é atendido do mesmo jeito); da agendada e da confirmada a consulta também pode
  * terminar em `faltou` (o paciente não veio) ou `cancelada`. Concluída, faltou e cancelada são
  * finais: a consulta não volta nem muda de novo.
  *
@@ -10,10 +11,8 @@
 import type { SituacaoConsulta } from "@/dominio";
 
 // A ordem é a dos botões: o passo seguinte do atendimento primeiro, depois `faltou` e `cancelada`.
-// Sem atalho: uma consulta agendada passa por `confirmada` antes de `em-atendimento`. Se o dia a dia
-// pedir o atalho, é uma linha nesta tabela e uma no teste.
 const TRANSICOES: Record<SituacaoConsulta, readonly SituacaoConsulta[]> = {
-  agendada: ["confirmada", "faltou", "cancelada"],
+  agendada: ["confirmada", "em-atendimento", "faltou", "cancelada"],
   confirmada: ["em-atendimento", "faltou", "cancelada"],
   "em-atendimento": ["concluida"],
   concluida: [],
