@@ -114,4 +114,37 @@ describe("lista de procedimentos", () => {
     expect(screen.queryByText("Nenhum procedimento encontrado")).toBeNull();
     expect(linhas()).toHaveLength(0);
   });
+
+  it("Novo procedimento abre o cadastro, e o procedimento salvo entra na lista com o preço em reais", async () => {
+    await abrir();
+
+    fireEvent.click(screen.getByRole("button", { name: "Novo procedimento" }));
+    const dialogo = screen.getByRole("dialog");
+    fireEvent.change(within(dialogo).getByLabelText("Nome"), { target: { value: "Consulta de retorno" } });
+    fireEvent.change(within(dialogo).getByLabelText("Especialidade"), { target: { value: "Prevenção" } });
+    fireEvent.change(within(dialogo).getByLabelText("Preço (R$)"), { target: { value: "95,90" } });
+    fireEvent.change(within(dialogo).getByLabelText("Duração (minutos)"), { target: { value: "20" } });
+    fireEvent.click(within(dialogo).getByRole("button", { name: "Salvar" }));
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.getByText("4 procedimentos")).toBeTruthy();
+    const nova = linhas().find((l) => l.textContent?.includes("Consulta de retorno"));
+    expect(nova?.textContent).toContain(formatarReais(9590));
+    expect(nova?.textContent).toContain("20 min");
+  });
+
+  it("Editar abre o cadastro daquele procedimento, e a lista mostra o valor novo", async () => {
+    await abrir();
+
+    fireEvent.click(screen.getByRole("button", { name: "Editar Profilaxia (limpeza)" }));
+    const dialogo = screen.getByRole("dialog");
+    expect((within(dialogo).getByLabelText("Preço (R$)") as HTMLInputElement).value).toBe("180,50");
+    fireEvent.change(within(dialogo).getByLabelText("Preço (R$)"), { target: { value: "200" } });
+    fireEvent.click(within(dialogo).getByRole("button", { name: "Salvar" }));
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(linhas()).toHaveLength(3);
+    expect(linhas()[0].textContent).toContain("Profilaxia (limpeza)");
+    expect(linhas()[0].textContent).toContain(formatarReais(20000));
+  });
 });
