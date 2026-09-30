@@ -1,7 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { exportarBackup, lerBackup, substituirPor, VERSAO_DO_BACKUP, type Backup } from "./backup";
+import { definirTema, setSidebarCollapsed } from "@/ui";
+
+import { exportarBackup, lerBackup, restaurarDemonstracao, substituirPor, VERSAO_DO_BACKUP, type Backup } from "./backup";
 import { criarColecao } from "./colecao";
+import { carregarSementes } from "./sementes";
 
 const envelope = (...ids: string[]) => JSON.stringify({ versao: 1, itens: ids.map((id) => ({ id })) });
 
@@ -17,7 +20,11 @@ const valido = (): Backup => ({
 });
 
 beforeEach(() => localStorage.clear());
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  vi.restoreAllMocks();
+  definirTema("sistema");
+  setSidebarCollapsed(false);
+});
 
 describe("exportarBackup", () => {
   it("leva as chaves arcada:* — coleções e marcas de semente — e deixa de fora o kit e outros apps", () => {
@@ -112,5 +119,70 @@ describe("substituirPor", () => {
     expect(substituirPor(valido())).toMatch(/Não foi possível gravar/);
 
     expect(foto()).toEqual(antes);
+  });
+});
+
+describe("restaurarDemonstracao", () => {
+  it("apaga as chaves arcada:* e deixa as preferências do kit e as chaves de outro app", () => {
+    definirTema("escuro");
+    setSidebarCollapsed(true);
+    const doKit = Object.keys(foto()); // as chaves que o kit escreveu, sem eu repetir o nome de nenhuma
+    localStorage.setItem("arcada:pacientes", envelope("p1"));
+    localStorage.setItem("arcada:sementes:nucleo", "1");
+    localStorage.setItem("outro-app:x", "y");
+
+    restaurarDemonstracao();
+
+    expect(doKit).toHaveLength(2);
+    expect(Object.keys(foto()).sort()).toEqual([...doKit, "outro-app:x"].sort());
+    expect(localStorage.getItem("arcada-tema")).toBe("escuro");
+  });
+
+  it("apaga a marca de semente: com ela, o carregarSementes pularia o semeador e a página voltaria vazia", () => {
+    const semear = vi.fn();
+    const semeador = { chave: "teste", versao: 1, semear };
+    carregarSementes([semeador]); // primeira visita: planta e marca
+    carregarSementes([semeador]); // visita seguinte: a marca está na versão, pula
+    expect(semear).toHaveBeenCalledTimes(1);
+
+    restaurarDemonstracao();
+    carregarSementes([semeador]); // a página recarregou: planta de novo
+
+    expect(semear).toHaveBeenCalledTimes(2);
+  });
+
+  /** O que o `main.tsx` faz ao carregar a página: módulos novos (coleções vazias na memória, relidas do storage) e as sementes. */
+  async function carregarApp() {
+    vi.resetModules();
+    const colecoes = await import("./colecoes");
+    const { SEMEADORES } = await import("./semeadores");
+    const { carregarSementes: semear } = await import("./sementes");
+    semear(SEMEADORES);
+    return colecoes;
+  }
+
+  it("depois de restaurar e recarregar, as sementes de verdade plantam pacientes e consultas de novo", async () => {
+    const primeira = await carregarApp();
+    const pacientesDeExemplo = primeira.pacientes.listar().map((p) => p.id);
+    const consultasDeExemplo = primeira.consultas.listar().length;
+    expect(pacientesDeExemplo.length).toBeGreaterThan(0);
+    expect(consultasDeExemplo).toBeGreaterThan(0);
+
+    // O usuário troca a demonstração pelos próprios dados e depois restaura.
+    primeira.pacientes.substituirTudo([{ id: "meu", nome: "Paciente Exemplo", nascimento: "2000-01-01", telefone: "(00) 90000-0000" }]);
+    primeira.consultas.substituirTudo([]);
+    restaurarDemonstracao();
+    const recarregada = await carregarApp();
+
+    expect(recarregada.pacientes.listar().map((p) => p.id)).toEqual(pacientesDeExemplo);
+    expect(recarregada.consultas.listar()).toHaveLength(consultasDeExemplo);
+  });
+
+  it("com o armazenamento bloqueado, não lança", () => {
+    vi.spyOn(globalThis, "localStorage", "get").mockImplementation(() => {
+      throw new DOMException("bloqueado", "SecurityError");
+    });
+
+    expect(() => restaurarDemonstracao()).not.toThrow();
   });
 });
