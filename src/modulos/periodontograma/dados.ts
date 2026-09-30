@@ -10,7 +10,7 @@ import { denteValido, type DataISO, type NumeroDente } from "@/dominio";
 import { diaISO } from "@/ui";
 
 import type { ExamePerio, MedidaSitio, Sitio } from "./exame";
-import { medidaValida, type CampoMedida } from "./grade";
+import { medidaValida, type CampoMedida, type Sinal } from "./grade";
 
 export type ExameSalvo = {
   id: string;
@@ -71,6 +71,20 @@ export function registrarMedida(
     const nova: MedidaSitio = { ...medida };
     if (valor === undefined) delete nova[campo];
     else nova[campo] = valor;
+    return nova;
+  });
+}
+
+/**
+ * Liga ou desliga o sinal (sangramento ou supuração) do sítio no exame de hoje. Ligado guarda `true`;
+ * desligado tira o campo, porque "desmarcado" e "sem sinal" são a mesma coisa. Devolve `false`, sem gravar,
+ * se o paciente ou o dente não existem.
+ */
+export function alternarSinal(pacienteId: string, dente: NumeroDente, sitio: Sitio, sinal: Sinal): boolean {
+  return atualizarSitio(pacienteId, dente, sitio, (medida) => {
+    const nova: MedidaSitio = { ...medida };
+    if (medida[sinal]) delete nova[sinal];
+    else nova[sinal] = true;
     return nova;
   });
 }
