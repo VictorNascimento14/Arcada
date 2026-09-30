@@ -382,3 +382,109 @@ describe("agenda: remarcar e cancelar", () => {
     expect(consultas.obter("k2")?.situacao).toBe("agendada");
   });
 });
+
+describe("agenda: visão da semana", () => {
+  const SEMANA = "28 de setembro a 4 de outubro de 2026"; // hoje é a quarta-feira 30/9
+  const abrirSemana = async () => {
+    await abrir();
+    fireEvent.click(screen.getByRole("button", { name: "Semana" }));
+    await screen.findByRole("heading", { level: 2, name: SEMANA });
+  };
+  const consultasDe = (dia: string) => within(screen.getByRole("list", { name: `Consultas de ${dia}` })).getAllByRole("article");
+  const titulo = (nome: string) => screen.findByRole("heading", { level: 2, name: nome });
+
+  it("o seletor troca o dia pela semana: sete colunas, de segunda a domingo", async () => {
+    await abrirSemana();
+
+    const dias = [
+      "segunda-feira, 28 de setembro de 2026",
+      "terça-feira, 29 de setembro de 2026",
+      "quarta-feira, 30 de setembro de 2026",
+      "quinta-feira, 1 de outubro de 2026",
+      "sexta-feira, 2 de outubro de 2026",
+      "sábado, 3 de outubro de 2026",
+      "domingo, 4 de outubro de 2026",
+    ];
+    expect(screen.getAllByRole("heading", { level: 3 })).toHaveLength(7);
+    for (const nome of dias) expect(screen.getByRole("heading", { level: 3, name: nome })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Semana" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "Dia" }).getAttribute("aria-pressed")).toBe("false");
+    expect(screen.queryByRole("heading", { level: 3, name: "Cadeira 1" })).toBeNull(); // a grade por cadeira saiu
+  });
+
+  it("cada coluna traz as consultas do dia, sem as canceladas, com a cadeira; dia sem consulta e dia fechado dizem", async () => {
+    await abrirSemana();
+
+    const quarta = consultasDe("quarta-feira, 30 de setembro de 2026");
+    expect(quarta).toHaveLength(2); // a cancelada das 14:00 não entra
+    expect(quarta[0].textContent).toContain("Ana Beatriz Moura");
+    expect(quarta[0].textContent).toContain("Cadeira 1");
+    expect(quarta[1].textContent).toContain("João Pedro Alves");
+    expect(quarta[1].textContent).toContain("Cadeira 2");
+    expect(consultasDe("quinta-feira, 1 de outubro de 2026")[0].textContent).toContain("Helena Duarte");
+    expect(screen.getByText("3 consultas nesta semana")).toBeTruthy();
+    expect(screen.getAllByText("Sem consultas")).toHaveLength(4); // segunda, terça, sexta e sábado
+    expect(screen.getByText("Fechado")).toBeTruthy(); // domingo: sem expediente
+  });
+
+  it("dentro do dia, as consultas seguem a ordem do horário e não a de gravação", async () => {
+    consultas.salvar({ ...CONSULTAS[1], id: "k5", pacienteId: "a3", inicio: "2026-09-30T07:45", duracaoMin: 15 });
+    await abrirSemana();
+
+    const nomes = consultasDe("quarta-feira, 30 de setembro de 2026").map((c) => c.textContent);
+    expect(nomes[0]).toContain("Helena Duarte");
+    expect(nomes[1]).toContain("Ana Beatriz Moura");
+    expect(nomes[2]).toContain("João Pedro Alves");
+  });
+
+  it("anda de semana em semana e Hoje volta à semana de hoje", async () => {
+    await abrirSemana();
+    const hoje = screen.getByRole("button", { name: "Hoje" }) as HTMLButtonElement;
+    expect(hoje.disabled).toBe(true); // a semana já é a de hoje
+
+    fireEvent.click(screen.getByRole("button", { name: "Próxima semana" }));
+    expect(await titulo("5 a 11 de outubro de 2026")).toBeTruthy();
+    expect(screen.getByText("Nenhuma consulta nesta semana")).toBeTruthy();
+    expect(hoje.disabled).toBe(false);
+
+    fireEvent.click(screen.getByRole("button", { name: "Semana anterior" }));
+    fireEvent.click(screen.getByRole("button", { name: "Semana anterior" }));
+    expect(await titulo("21 a 27 de setembro de 2026")).toBeTruthy();
+
+    fireEvent.click(hoje);
+    expect(await titulo(SEMANA)).toBeTruthy();
+    expect(hoje.disabled).toBe(true);
+  });
+
+  it("clicar no cartão abre o mesmo detalhe, e a situação nova aparece na coluna", async () => {
+    await abrirSemana();
+    fireEvent.click((await abrirCartao("João Pedro Alves")).getByRole("button", { name: "Confirmar consulta" }));
+
+    expect(consultasDe("quarta-feira, 30 de setembro de 2026")[1].textContent).toContain("Confirmada");
+  });
+
+  it("clicar no cabeçalho do dia abre esse dia na visão do dia", async () => {
+    await abrirSemana();
+    fireEvent.click(screen.getByRole("button", { name: "quinta-feira, 1 de outubro de 2026" }));
+
+    expect(await titulo("quinta-feira, 1 de outubro de 2026")).toBeTruthy();
+    expect(cartoes("Cadeira 1")[0].textContent).toContain("Helena Duarte");
+    expect(screen.getByRole("button", { name: "Dia" }).getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("o seletor Dia volta ao dia que estava aberto", async () => {
+    await abrirSemana();
+    fireEvent.click(screen.getByRole("button", { name: "Dia" }));
+
+    expect(await titulo("quarta-feira, 30 de setembro de 2026")).toBeTruthy();
+    expect(cartoes("Cadeira 1")).toHaveLength(1);
+  });
+
+  it("marca o feriado na coluna do dia", async () => {
+    hojeE(2026, 9, 7); // segunda-feira
+    await abrir("segunda-feira, 7 de setembro de 2026");
+    fireEvent.click(screen.getByRole("button", { name: "Semana" }));
+
+    expect(await screen.findByText("Feriado: Independência do Brasil")).toBeTruthy();
+  });
+});
