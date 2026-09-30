@@ -4,6 +4,7 @@ import { useColecao } from "@/dados/useColecao";
 import { dataBR } from "@/modulos/pacientes/exibicao";
 import { Button, GlassCard, TextField, toast } from "@/ui";
 import { anamneses, salvarAnamnese, versoesDoPaciente } from "./dados";
+import HistoricoDeVersoes from "./HistoricoDeVersoes";
 import { LIMITE_DO_DETALHE, LIMITE_DO_TEXTO, PERGUNTAS, SECOES, type RespostaSimNao, type Secao } from "./questionario";
 import SeloAlertas from "./SeloAlertas";
 
@@ -143,9 +144,15 @@ function Formulario({ pacienteId }: Props) {
 }
 
 /**
- * A aba "Anamnese" da ficha. A `key` dá a cada paciente o seu formulário: a ficha reaproveita a aba ao trocar
- * de paciente, e sem ela o que foi digitado para um ficaria na tela do outro.
+ * A aba "Anamnese" da ficha: o formulário e, abaixo, o histórico de versões. A `key` dá a cada paciente a sua
+ * tela: a ficha reaproveita a aba ao trocar de paciente, e sem ela o que foi digitado para um ficaria na tela
+ * do outro. Fica no elemento de fora: duas `key` iguais em irmãos (uma em cada cartão) se confundem.
  */
 export default function FormularioAnamnese({ pacienteId }: Props) {
-  return <Formulario key={pacienteId} pacienteId={pacienteId} />;
+  return (
+    <div key={pacienteId} className="grid gap-4">
+      <Formulario pacienteId={pacienteId} />
+      <HistoricoDeVersoes pacienteId={pacienteId} />
+    </div>
+  );
 }

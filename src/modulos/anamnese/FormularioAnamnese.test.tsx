@@ -153,4 +153,17 @@ describe("FormularioAnamnese", () => {
     salvar();
     expect(alertas()).toEqual(["Alergia informada: Látex", "Gestante"]);
   });
+
+  it("o histórico só aparece com versão gravada e ganha uma a cada salvamento", () => {
+    render(<FormularioAnamnese pacienteId="p1" />);
+    expect(screen.queryByRole("heading", { name: "Histórico de versões" })).toBeNull();
+
+    responderTudoNao();
+    salvar();
+    expect(screen.getByRole("heading", { name: "Histórico de versões" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Ver respostas da versão 1" })).toBeTruthy();
+
+    salvar();
+    expect(screen.getByRole("button", { name: "Ver respostas da versão 2" })).toBeTruthy();
+  });
 });
