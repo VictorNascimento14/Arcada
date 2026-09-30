@@ -39,3 +39,15 @@ export const ROTULO_DA_SITUACAO: Record<SituacaoConsulta, string> = {
   faltou: "Faltou",
   cancelada: "Cancelada",
 };
+
+/**
+ * O que o botão diz para levar a consulta a essa situação: um verbo, e não o nome da situação. `agendada` não
+ * tem: nenhuma transição leva a ela (só a marcação cria a consulta assim).
+ */
+export const ACAO_DA_SITUACAO: Partial<Record<SituacaoConsulta, string>> = {
+  confirmada: "Confirmar consulta",
+  "em-atendimento": "Iniciar atendimento",
+  concluida: "Concluir atendimento",
+  faltou: "Marcar falta",
+  cancelada: "Cancelar consulta",
+};
