@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider, type RouteObject } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 
@@ -23,5 +23,13 @@ describe("rotas", () => {
     const rotas: RouteObject[] = [{ errorElement: ROTAS[0].errorElement, children: [{ path: "/quebra", Component: Quebra }] }];
     render(<RouterProvider router={createMemoryRouter(rotas, { initialEntries: ["/quebra"] })} />);
     expect(await screen.findByRole("heading", { name: "Algo não saiu como esperado" })).toBeTruthy();
+  });
+
+  it("Ctrl+K abre a busca de pacientes fora da tela de sistema", async () => {
+    abrir("/pacientes");
+    await screen.findAllByText("Pacientes");
+    expect(screen.queryByRole("dialog")).toBeNull();
+    fireEvent.keyDown(document, { key: "k", ctrlKey: true });
+    expect(await screen.findByRole("dialog")).toBeTruthy();
   });
 });
