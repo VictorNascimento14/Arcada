@@ -1,3 +1,4 @@
+import type { DataISO } from "./datas";
 import type { Centavos } from "./dinheiro";
 import type { Face, NumeroDente } from "./odontologia";
 
@@ -15,6 +16,8 @@ export type ItemPlano = {
   faces?: Face[];
   /** Preço do item quando entrou no plano, copiado do catálogo: reajustar o catálogo depois não muda o que já foi orçado. */
   preco: Centavos;
+  /** Dia em que o procedimento foi feito; ausente é ainda a fazer. É o que conta o progresso do plano. */
+  realizadoEm?: DataISO;
 };
 
 /** Plano de tratamento de um paciente; o orçamento é a proposta de valores dele. */
