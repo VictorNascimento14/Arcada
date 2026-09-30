@@ -64,12 +64,14 @@ describe("tela do atendimento", () => {
     expect(screen.getByText("Em atendimento")).toBeTruthy();
   });
 
-  it("o cartão de procedimentos realizados só aparece com a consulta em atendimento", () => {
+  it("os cartões de procedimentos realizados e de evolução só aparecem com a consulta em atendimento", () => {
     abrir();
     expect(screen.queryByText("Procedimentos realizados")).toBeNull();
+    expect(screen.queryByText("Evolução clínica")).toBeNull();
 
     fireEvent.click(iniciar()!);
     expect(screen.getByText("Procedimentos realizados")).toBeTruthy();
+    expect(screen.getByText("Evolução clínica")).toBeTruthy();
   });
 
   it.each<SituacaoConsulta>(["em-atendimento", "concluida", "faltou", "cancelada"])("consulta %s não oferece iniciar", (situacao) => {

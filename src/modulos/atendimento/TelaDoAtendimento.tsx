@@ -8,12 +8,13 @@ import { GlassCard, PageShell } from "@/ui";
 
 import BotaoIniciarAtendimento from "./BotaoIniciarAtendimento";
 import { faixaDeHoras } from "./consultas";
+import EvolucaoClinica from "./EvolucaoClinica";
 import ProcedimentosRealizados from "./ProcedimentosRealizados";
 
 /**
  * `/atendimento/:consultaId`: a consulta que está sendo atendida. Abrir o endereço não muda a situação: só o
  * botão "Iniciar atendimento" muda, para que recarregar a página nunca inicie nada sozinho. Com a consulta em
- * atendimento, a tela também registra os procedimentos realizados.
+ * atendimento, a tela também registra os procedimentos realizados e a evolução clínica.
  */
 export default function TelaDoAtendimento() {
   const { consultaId } = useParams();
@@ -81,7 +82,12 @@ export default function TelaDoAtendimento() {
           {podeIniciar && <p className="mt-5 text-sm text-foreground-500">O atendimento ainda não começou.</p>}
         </GlassCard>
 
-        {consulta.situacao === "em-atendimento" && <ProcedimentosRealizados pacienteId={consulta.pacienteId} />}
+        {consulta.situacao === "em-atendimento" && (
+          <>
+            <ProcedimentosRealizados pacienteId={consulta.pacienteId} />
+            <EvolucaoClinica consultaId={consulta.id} />
+          </>
+        )}
       </main>
     </PageShell>
   );
