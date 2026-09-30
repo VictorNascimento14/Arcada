@@ -39,6 +39,12 @@ describe("somarMeses", () => {
     expect(somarMeses("2026-03-31", 1)).toBe("2026-04-30");
   });
 
+  it("com meses negativos volta no tempo, com o mesmo ajuste de fim de mês", () => {
+    expect(somarMeses("2026-09-30", -6)).toBe("2026-03-30");
+    expect(somarMeses("2026-03-31", -1)).toBe("2026-02-28");
+    expect(somarMeses("2026-02-15", -2)).toBe("2025-12-15");
+  });
+
   it("volta ao dia 31 quando o mês de chegada tem", () => {
     expect(somarMeses("2026-01-31", 1)).toBe("2026-02-28");
     expect(somarMeses("2026-01-31", 2)).toBe("2026-03-31");
