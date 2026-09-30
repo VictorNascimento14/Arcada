@@ -4,6 +4,7 @@ import { Link, useParams } from "react-router-dom";
 import { pacientes } from "@/dados/colecoes";
 import { useColecao } from "@/dados/useColecao";
 import { NAVEGACAO } from "@/modulos";
+import SeloAlertas from "@/modulos/anamnese/SeloAlertas";
 import { Avatar, diaISO, GlassCard, PageShell } from "@/ui";
 import { linkTelefone, linkWhatsApp } from "./contato";
 import DadosDoPaciente from "./DadosDoPaciente";
@@ -78,6 +79,10 @@ export default function FichaPaciente() {
               {anos === null ? rotuloConvenio(paciente) : `${rotuloIdade(anos)} · ${rotuloConvenio(paciente)}`}
             </p>
             {paciente.telefone && <p className="text-foreground-500">{paciente.telefone}</p>}
+            {/* Os alertas da última anamnese salva; sem alerta, o `empty:hidden` não deixa espaço. */}
+            <div className="mt-2 empty:hidden">
+              <SeloAlertas pacienteId={paciente.id} />
+            </div>
           </div>
           {(whatsapp || ligar) && (
             <div className="flex flex-wrap gap-2">
