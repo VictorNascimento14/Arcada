@@ -26,7 +26,7 @@ const CAMPO =
  * A grade de sondagem de uma arcada: uma linha por dente permanente, na ordem em que se desenham (da direita
  * para a esquerda do paciente), e uma coluna por sítio, com a profundidade e depois a margem. A tabela rola
  * na horizontal no celular, com a coluna do dente fixa e o título da arcada parado. Só desenha e avisa: quem
- * grava é `aoMedir`.
+ * grava é `aoMedir`. Todo campo leva `data-celula`: é por ele que a aba percorre a grade pelo teclado.
  */
 export default function GradeDeSondagem({ arcada, dentes, aoMedir }: Props) {
   const titulo = useId();
@@ -84,6 +84,7 @@ export default function GradeDeSondagem({ arcada, dentes, aoMedir }: Props) {
                           onChange={(e) => aoMedir(dente, sitio, campo, e.target.value === "" ? undefined : e.target.valueAsNumber)}
                           // A roda do mouse sobre um campo em foco muda o valor: sem soltar o foco, rolar a página com o ponteiro na grade estragaria medidas.
                           onWheel={(e) => e.currentTarget.blur()}
+                          data-celula=""
                           aria-label={`${rotulo}, dente ${dente}, ${nomeDoSitio(sitio, arcada)}`}
                           className={CAMPO}
                         />

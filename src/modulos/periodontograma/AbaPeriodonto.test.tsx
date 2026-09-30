@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { pacientes } from "@/dados/colecoes";
@@ -13,6 +13,7 @@ const BRUNO: Paciente = { id: "p2", nome: "Bruno Cardoso Lima", nascimento: "199
 
 const MARGEM = "Margem (+ recessão, − coronal)";
 const campo = (rotulo: string, dente: number, sitio: string) => screen.getByLabelText(`${rotulo}, dente ${dente}, ${sitio}`) as HTMLInputElement;
+const tabela = (arcada: "superior" | "inferior") => within(screen.getByRole("table", { name: `Arcada ${arcada}` }));
 const digitar = (input: HTMLInputElement, valor: string) => fireEvent.change(input, { target: { value: valor } });
 const exameDeHoje = (pacienteId = "p1") => examesPerio.listar().find((e) => e.pacienteId === pacienteId && e.data === "2026-09-30");
 
@@ -25,29 +26,32 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.restoreAllMocks();
   vi.useRealTimers();
   pacientes.substituirTudo([]);
   examesPerio.substituirTudo([]);
 });
 
 describe("AbaPeriodonto", () => {
-  it("abre com o exame de hoje em branco e a arcada superior, do 18 ao 28, na ordem em que se desenha", () => {
+  it("abre com o exame de hoje em branco e as duas arcadas, a superior primeiro, na ordem em que se desenham", () => {
     render(<AbaPeriodonto pacienteId="p1" />);
 
     expect(screen.getByRole("heading", { name: "Exame periodontal de 30/09/2026" })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "Arcada superior" })).toBeTruthy();
-    expect(screen.getByRole("table", { name: "Arcada superior" })).toBeTruthy();
-    expect(screen.getAllByRole("rowheader").map((d) => d.textContent)).toEqual(
+    expect(screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent)).toEqual(["Arcada superior", "Arcada inferior"]);
+    expect(tabela("superior").getAllByRole("rowheader").map((d) => d.textContent)).toEqual(
       [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28].map(String),
     );
+    expect(tabela("inferior").getAllByRole("rowheader").map((d) => d.textContent)).toEqual(
+      [48, 47, 46, 45, 44, 43, 42, 41, 31, 32, 33, 34, 35, 36, 37, 38].map(String),
+    );
     expect(screen.getAllByRole("spinbutton").every((c) => (c as HTMLInputElement).value === "")).toBe(true);
-    expect(screen.getAllByRole("spinbutton")).toHaveLength(16 * 12);
+    expect(screen.getAllByRole("spinbutton")).toHaveLength(32 * 12);
   });
 
   it("chama de palatino o lado de dentro da arcada superior — MP, P e DP —, e o campo da margem diz o sinal", () => {
     render(<AbaPeriodonto pacienteId="p1" />);
 
-    expect(screen.getAllByRole("columnheader").map((c) => c.textContent)).toEqual([
+    expect(tabela("superior").getAllByRole("columnheader").map((c) => c.textContent)).toEqual([
       "Dente",
       "Profundidade",
       MARGEM,
@@ -56,6 +60,22 @@ describe("AbaPeriodonto", () => {
     ]);
     expect(campo(MARGEM, 16, "mesiopalatino")).toBeTruthy();
     expect(campo("Profundidade", 16, "distopalatino")).toBeTruthy();
+  });
+
+  it("chama de lingual o lado de dentro da arcada inferior — ML, L e DL —, e grava nela como na superior", () => {
+    render(<AbaPeriodonto pacienteId="p1" />);
+
+    expect(tabela("inferior").getAllByRole("columnheader").map((c) => c.textContent)).toEqual([
+      "Dente",
+      "Profundidade",
+      MARGEM,
+      ...["MV", "V", "DV", "ML", "L", "DL"],
+      ...["MV", "V", "DV", "ML", "L", "DL"],
+    ]);
+    digitar(campo("Profundidade", 36, "mesiolingual"), "5");
+    digitar(campo(MARGEM, 36, "distolingual"), "-1");
+
+    expect(exameDeHoje()?.dentes[36]?.sitios).toEqual({ ML: { profundidade: 5 }, DL: { margem: -1 } });
   });
 
   it("grava no exame de hoje o que se digita, e o campo mostra o valor gravado", () => {
@@ -133,5 +153,85 @@ describe("AbaPeriodonto", () => {
     digitar(campo("Profundidade", 16, "vestibular"), "2");
     expect(exameDeHoje("p2")?.dentes[16]?.sitios?.V?.profundidade).toBe(2);
     expect(exameDeHoje("p1")?.dentes[16]?.sitios?.V?.profundidade).toBe(3);
+  });
+
+  describe("teclado", () => {
+    const tecla = (alvo: HTMLElement, key: string, mais: KeyboardEventInit = {}) => fireEvent.keyDown(alvo, { key, ...mais });
+    const foco = () => document.activeElement?.getAttribute("aria-label");
+    /** Foca o campo e aperta a tecla nele; devolve o rótulo de quem ficou com o foco. */
+    const apertar = (key: string, rotulo: string, dente: number, sitio: string) => {
+      const c = campo(rotulo, dente, sitio);
+      c.focus();
+      tecla(c, key);
+      return foco();
+    };
+
+    it("a ordem do Tab é a da grade: os seis sítios da profundidade, depois os da margem, e então o dente seguinte", () => {
+      render(<AbaPeriodonto pacienteId="p1" />);
+      const sitios = ["mesiovestibular", "vestibular", "distovestibular", "mesiopalatino", "palatino", "distopalatino"];
+
+      // Sem `tabindex`, o Tab segue a ordem do documento.
+      expect(screen.getAllByRole("spinbutton").slice(0, 13).map((c) => c.getAttribute("aria-label"))).toEqual([
+        ...sitios.map((s) => `Profundidade, dente 18, ${s}`),
+        ...sitios.map((s) => `${MARGEM}, dente 18, ${s}`),
+        "Profundidade, dente 17, mesiovestibular",
+      ]);
+    });
+
+    it("a seta para a direita vai ao sítio seguinte, com o conteúdo selecionado, e a para a esquerda volta", () => {
+      render(<AbaPeriodonto pacienteId="p1" />);
+      const selecionar = vi.spyOn(HTMLInputElement.prototype, "select");
+
+      expect(apertar("ArrowRight", "Profundidade", 16, "mesiovestibular")).toBe("Profundidade, dente 16, vestibular");
+      expect(selecionar).toHaveBeenCalledTimes(1);
+      expect(apertar("ArrowLeft", "Profundidade", 16, "vestibular")).toBe("Profundidade, dente 16, mesiovestibular");
+    });
+
+    it("da profundidade a seta segue para a margem, e da ponta da linha ao primeiro campo do dente seguinte", () => {
+      render(<AbaPeriodonto pacienteId="p1" />);
+
+      expect(apertar("ArrowRight", "Profundidade", 16, "distopalatino")).toBe(`${MARGEM}, dente 16, mesiovestibular`);
+      expect(apertar("ArrowRight", MARGEM, 16, "distopalatino")).toBe("Profundidade, dente 15, mesiovestibular");
+      expect(apertar("ArrowLeft", "Profundidade", 15, "mesiovestibular")).toBe(`${MARGEM}, dente 16, distopalatino`);
+    });
+
+    it("as setas para cima e para baixo vão ao mesmo campo do dente vizinho, na ordem em que a grade desenha", () => {
+      render(<AbaPeriodonto pacienteId="p1" />);
+
+      expect(apertar("ArrowDown", MARGEM, 16, "palatino")).toBe(`${MARGEM}, dente 15, palatino`);
+      expect(apertar("ArrowUp", MARGEM, 15, "palatino")).toBe(`${MARGEM}, dente 16, palatino`);
+      expect(apertar("ArrowUp", MARGEM, 16, "palatino")).toBe(`${MARGEM}, dente 17, palatino`);
+    });
+
+    it("passa da arcada superior para a inferior e volta", () => {
+      render(<AbaPeriodonto pacienteId="p1" />);
+
+      expect(apertar("ArrowDown", "Profundidade", 28, "vestibular")).toBe("Profundidade, dente 48, vestibular");
+      expect(apertar("ArrowUp", "Profundidade", 48, "vestibular")).toBe("Profundidade, dente 28, vestibular");
+    });
+
+    it("nas pontas da grade a seta não sai dela nem soma ao valor", () => {
+      render(<AbaPeriodonto pacienteId="p1" />);
+      digitar(campo("Profundidade", 18, "mesiovestibular"), "3");
+
+      expect(apertar("ArrowUp", "Profundidade", 18, "mesiovestibular")).toBe("Profundidade, dente 18, mesiovestibular");
+      expect(apertar("ArrowLeft", "Profundidade", 18, "mesiovestibular")).toBe("Profundidade, dente 18, mesiovestibular");
+      expect(apertar("ArrowDown", MARGEM, 38, "distolingual")).toBe(`${MARGEM}, dente 38, distolingual`);
+      expect(apertar("ArrowRight", MARGEM, 38, "distolingual")).toBe(`${MARGEM}, dente 38, distolingual`);
+      expect(campo("Profundidade", 18, "mesiovestibular").value).toBe("3");
+    });
+
+    it("só as setas sem modificador são da grade: Tab, dígitos e Shift+seta seguem com o navegador", () => {
+      render(<AbaPeriodonto pacienteId="p1" />);
+      const c = campo("Profundidade", 16, "vestibular");
+      c.focus();
+
+      expect(tecla(c, "ArrowRight")).toBe(false); // desviada: o `preventDefault` devolve `false`
+      c.focus();
+      expect(tecla(c, "Tab")).toBe(true);
+      expect(tecla(c, "5")).toBe(true);
+      expect(tecla(c, "ArrowRight", { shiftKey: true })).toBe(true);
+      expect(foco()).toBe("Profundidade, dente 16, vestibular");
+    });
   });
 });
