@@ -28,3 +28,9 @@ export function rotuloIdade(anos: number): string {
 export function rotuloConvenio(paciente: Pick<Paciente, "convenio">): string {
   return paciente.convenio?.trim() || "Particular";
 }
+
+/** `AAAA-MM-DD` como `DD/MM/AAAA`, sem passar por `Date`, que leria UTC e recuaria um dia. Texto fora do formato volta como veio. */
+export function dataBR(iso: string): string {
+  const [ano, mes, dia] = iso.split("-");
+  return ano && mes && dia ? `${dia}/${mes}/${ano}` : iso;
+}

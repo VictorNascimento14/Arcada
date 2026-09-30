@@ -76,6 +76,7 @@ describe("cadastro de paciente", () => {
     });
     expect(salvo.cpf).toBeUndefined();
     await waitFor(() => expect(caminho()).toBe(`/pacientes/${salvo.id}`));
+    expect(await screen.findByRole("heading", { name: "Paciente Exemplo" })).toBeTruthy(); // a ficha abre
   });
 
   it("Cancelar volta à lista sem gravar", async () => {
