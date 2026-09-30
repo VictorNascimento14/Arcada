@@ -3,6 +3,7 @@ export * from "./clinica";
 export * from "./consulta";
 export * from "./datas";
 export * from "./dinheiro";
+export * from "./fdi";
 export * from "./financeiro";
 export * from "./odontologia";
 export * from "./paciente";
