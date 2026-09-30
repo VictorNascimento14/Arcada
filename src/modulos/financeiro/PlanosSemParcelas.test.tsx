@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { lancamentos, pacientes, planos } from "@/dados/colecoes";
 import { formatarReais, type Paciente, type PlanoTratamento, type SituacaoPlano } from "@/dominio";
 
-import PaginaFinanceiro from "./PaginaFinanceiro";
+import PlanosSemParcelas from "./PlanosSemParcelas";
 
 // O `getByText` normaliza o espaço não separável que o Intl põe depois do `R$`; o texto esperado precisa do mesmo tratamento.
 const reais = (centavos: number) => formatarReais(centavos).replace(/\s/g, " ");
@@ -26,7 +26,7 @@ beforeEach(() => {
 
 function abrir() {
   const rotas = [
-    { path: "/financeiro", Component: PaginaFinanceiro },
+    { path: "/financeiro", Component: PlanosSemParcelas },
     { path: "/tratamentos", element: <p>Lista de tratamentos</p> },
     { path: "/planos/:planoId", element: <p>Tela do plano</p> },
   ];
