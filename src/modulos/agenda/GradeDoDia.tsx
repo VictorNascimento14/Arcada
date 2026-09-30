@@ -26,7 +26,7 @@ const achar = <T extends { id: string }>(itens: readonly T[], id?: string) => it
  * ponytail: cada cartão acha paciente, profissional e procedimento por `find` na lista inteira. Com dezenas
  * de consultas no dia e centenas de pacientes não pesa; com milhares, vira um `Map` por id.
  */
-export default function GradeDoDia({ dia }: { dia: DataISO }) {
+export default function GradeDoDia({ dia, aoAbrirConsulta }: { dia: DataISO; aoAbrirConsulta: (id: string) => void }) {
   const todas = useColecao(consultas);
   const todasAsCadeiras = useColecao(cadeiras);
   const listaDePacientes = useColecao(pacientes);
@@ -129,6 +129,7 @@ export default function GradeDoDia({ dia }: { dia: DataISO }) {
                                 paciente={achar(listaDePacientes, x.pacienteId)}
                                 profissional={achar(equipe, x.profissionalId)}
                                 procedimento={achar(catalogo, x.procedimentoId)}
+                                aoAbrir={() => aoAbrirConsulta(x.id)}
                               />
                             </li>
                           ))}

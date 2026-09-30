@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cadeiras, clinica, CLINICA_ID, consultas, pacientes, procedimentos, profissionais } from "@/dados/colecoes";
 import type { Cadeira, Clinica, Consulta, Paciente, Procedimento, Profissional } from "@/dominio";
 import { ROTAS } from "@/rotas";
+import { assinarToasts } from "@/ui";
 
 // Tudo fictício: telefones com DDD 00, que não existe; nenhum CPF.
 const MANHA = { inicio: "08:00", fim: "12:00" };
@@ -191,5 +192,79 @@ describe("agenda: visão do dia", () => {
     await abrir();
 
     expect(screen.getByText("Nenhuma cadeira cadastrada")).toBeTruthy();
+  });
+});
+
+describe("agenda: situação da consulta", () => {
+  // O cartão é o botão que abre o detalhe da consulta.
+  const abrirCartao = async (paciente: string) => {
+    fireEvent.click(screen.getByRole("button", { name: new RegExp(paciente) }));
+    return within(await screen.findByRole("dialog", { name: `Consulta de ${paciente}` }));
+  };
+  type Detalhe = Awaited<ReturnType<typeof abrirCartao>>;
+  const botoes = (d: Detalhe) => within(d.getByRole("group", { name: "Mudar a situação" })).getAllByRole("button").map((b) => b.textContent);
+
+  it("clicar no cartão abre o detalhe: quem, quando, onde e a situação", async () => {
+    await abrir();
+    const d = await abrirCartao("Ana Beatriz Moura");
+
+    expect(d.getByText("quarta-feira, 30 de setembro de 2026, das 08:00 às 08:45")).toBeTruthy();
+    expect(d.getByText("Dra. Exemplo")).toBeTruthy();
+    expect(d.getByText("Cadeira 1")).toBeTruthy();
+    expect(d.getByText("Restauração")).toBeTruthy();
+    expect(d.getByText("Confirmada")).toBeTruthy();
+  });
+
+  it("consulta sem procedimento e com o profissional removido continua abrindo", async () => {
+    consultas.substituirTudo([{ ...CONSULTAS[1], profissionalId: "sumiu" }]);
+    await abrir();
+    const d = await abrirCartao("João Pedro Alves");
+
+    expect(d.getByText("Sem procedimento definido")).toBeTruthy();
+    expect(d.getByText("Profissional removido")).toBeTruthy();
+  });
+
+  it.each([
+    ["João Pedro Alves", "agendada", ["Confirmar consulta", "Iniciar atendimento", "Marcar falta"]],
+    ["Ana Beatriz Moura", "confirmada", ["Iniciar atendimento", "Marcar falta"]],
+  ])("de %s (%s), só os botões das transições válidas", async (paciente, _situacao, esperados) => {
+    await abrir();
+    expect(botoes(await abrirCartao(paciente))).toEqual(esperados);
+  });
+
+  it("o botão grava a situação, fecha o detalhe e o cartão mostra a nova", async () => {
+    const avisos: string[] = [];
+    const cancelar = assinarToasts((a) => avisos.push(`${a.titulo} | ${a.corpo}`));
+    await abrir();
+    const d = await abrirCartao("João Pedro Alves");
+
+    fireEvent.click(d.getByRole("button", { name: "Confirmar consulta" }));
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(consultas.obter("k2")?.situacao).toBe("confirmada");
+    expect(cartoes("Cadeira 2")[0].textContent).toContain("Confirmada · Dr. Exemplo");
+    expect(avisos).toEqual(["Situação atualizada | João Pedro Alves · Confirmada"]);
+    cancelar();
+  });
+
+  it("segue o atendimento até concluir, e a situação final não tem botão", async () => {
+    await abrir();
+    fireEvent.click((await abrirCartao("Ana Beatriz Moura")).getByRole("button", { name: "Iniciar atendimento" }));
+    expect(cartoes("Cadeira 1")[0].textContent).toContain("Em atendimento · Dra. Exemplo");
+
+    const emAtendimento = await abrirCartao("Ana Beatriz Moura");
+    expect(botoes(emAtendimento)).toEqual(["Concluir atendimento"]);
+    fireEvent.click(emAtendimento.getByRole("button", { name: "Concluir atendimento" }));
+
+    const concluida = await abrirCartao("Ana Beatriz Moura");
+    expect(concluida.queryByRole("group", { name: "Mudar a situação" })).toBeNull();
+    expect(concluida.getByText("Situação final: esta consulta não muda mais.")).toBeTruthy();
+  });
+
+  it("marcar falta tira os botões e o cartão continua na grade", async () => {
+    await abrir();
+    fireEvent.click((await abrirCartao("João Pedro Alves")).getByRole("button", { name: "Marcar falta" }));
+
+    expect(cartoes("Cadeira 2")[0].textContent).toContain("Faltou · Dr. Exemplo");
   });
 });

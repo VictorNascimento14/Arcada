@@ -3,6 +3,7 @@ import { useId, useState } from "react";
 import { Button, diaISO, GlassCard, PageShell } from "@/ui";
 
 import CalendarioDoMes from "./CalendarioDoMes";
+import DetalheDaConsulta from "./DetalheDaConsulta";
 import { rotuloDoDia, somarDias } from "./dias";
 import { feriadoDoDia } from "./feriados";
 import GradeDoDia from "./GradeDoDia";
@@ -14,11 +15,12 @@ const NAVEGAR =
 
 /**
  * A tela `/agenda`: o dia escolhido por cadeira, com a navegação de dia em dia e o calendário do mês. Abre no
- * dia de hoje. O calendário fica ao lado da grade em tela larga (`xl`); abaixo disso, atrás do botão Mês.
+ * dia de hoje. Clicar numa consulta abre o detalhe dela. O calendário fica ao lado da grade em tela larga (`xl`); abaixo disso, atrás do botão Mês.
  */
 export default function PaginaAgenda() {
   const [dia, setDia] = useState(() => diaISO(new Date()));
   const [marcando, setMarcando] = useState(false);
+  const [aberta, setAberta] = useState<string | null>(null); // o id da consulta com o detalhe aberto
   const [mesAberto, setMesAberto] = useState(false);
   const calendarioId = useId();
   const hoje = diaISO(new Date());
@@ -75,9 +77,11 @@ export default function PaginaAgenda() {
             <CalendarioDoMes aoAbrirDia={abrirDia} />
           </div>
           <div className="min-w-0">
-            <GradeDoDia dia={dia} />
+            <GradeDoDia dia={dia} aoAbrirConsulta={setAberta} />
           </div>
         </div>
+
+        {aberta && <DetalheDaConsulta consultaId={aberta} aoFechar={() => setAberta(null)} />}
 
         {/* Ao marcar, a agenda abre no dia da consulta nova. */}
         {marcando && (
