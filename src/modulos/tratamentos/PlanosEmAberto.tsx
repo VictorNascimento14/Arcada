@@ -9,6 +9,7 @@ import { Avatar, GlassCard, PageShell } from "@/ui";
 import { planosEmAberto } from "./emAberto";
 import { rotuloItens } from "./exibicao";
 import { total } from "./plano";
+import ProgressoDoPlano from "./ProgressoDoPlano";
 import SituacaoBadge from "./SituacaoBadge";
 
 /** `/tratamentos`: os planos em aberto de todos os pacientes, com o paciente, a situação e o total. */
@@ -52,6 +53,7 @@ export default function PlanosEmAberto() {
                       <div className="min-w-0 flex-1">
                         <p className="truncate font-semibold text-foreground-950">{paciente?.nome ?? "Paciente não encontrado"}</p>
                         <p className="text-sm text-foreground-500">{rotuloItens(plano.itens.length)}</p>
+                        <ProgressoDoPlano plano={plano} className="mt-1.5 max-w-xs" />
                       </div>
                       <SituacaoBadge situacao={plano.situacao} />
                       <p className="font-semibold tabular-nums text-foreground-950">{formatarReais(total(plano))}</p>
