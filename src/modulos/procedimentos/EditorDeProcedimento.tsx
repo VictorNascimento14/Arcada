@@ -151,6 +151,21 @@ export default function EditorDeProcedimento({ procedimento, aoFechar }: { proce
           </label>
           {erros.exigeFace && <p className="text-xs text-red-600">{erros.exigeFace}</p>}
         </fieldset>
+
+        <label className="flex items-start gap-2.5 text-sm text-foreground-700">
+          <input
+            type="checkbox"
+            checked={campos.ativo}
+            onChange={(e) => setCampos((c) => ({ ...c, ativo: e.target.checked }))}
+            className="mt-0.5 h-4 w-4 accent-primary-800"
+          />
+          <span>
+            Procedimento ativo
+            <span className="block text-xs text-foreground-500">
+              Inativo continua na tabela e no histórico, mas some das escolhas do plano de tratamento e da agenda.
+            </span>
+          </span>
+        </label>
       </form>
     </Modal>
   );

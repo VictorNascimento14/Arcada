@@ -34,6 +34,7 @@ const VALIDOS: CamposDoProcedimento = {
   duracao: "30",
   exigeDente: false,
   exigeFace: false,
+  ativo: true,
 };
 const com = (parte: Partial<CamposDoProcedimento>): CamposDoProcedimento => ({ ...VALIDOS, ...parte });
 
@@ -44,7 +45,7 @@ beforeEach(() => {
 
 describe("camposDoProcedimento", () => {
   it("de um procedimento novo: tudo vazio e sem exigência", () => {
-    expect(camposDoProcedimento()).toEqual({ nome: "", codigo: "", especialidade: "", preco: "", duracao: "", exigeDente: false, exigeFace: false });
+    expect(camposDoProcedimento()).toEqual({ nome: "", codigo: "", especialidade: "", preco: "", duracao: "", exigeDente: false, exigeFace: false, ativo: true });
   });
 
   it("de um existente: o preço volta como se digita, com milhar e vírgula, e a duração como texto", () => {
@@ -56,6 +57,7 @@ describe("camposDoProcedimento", () => {
       duracao: "50",
       exigeDente: true,
       exigeFace: true,
+      ativo: false, // o EXISTENTE está inativo
     });
     expect(camposDoProcedimento({ ...EXISTENTE, codigo: undefined, preco: 9000 }).codigo).toBe("");
   });
@@ -132,7 +134,16 @@ describe("salvarProcedimento", () => {
 
     expect(erros).toEqual({});
     expect(procedimentos.listar()).toHaveLength(2);
-    expect(procedimentos.obter("p1")).toEqual({ ...EXISTENTE, preco: 130000, duracaoMin: 60 }); // `ativo: false` e a condição seguem
+    expect(procedimentos.obter("p1")).toEqual({ ...EXISTENTE, preco: 130000, duracaoMin: 60 }); // segue inativo e com a condição resultante
+  });
+
+  it("ativa e desativa pelo campo ativo, sem tocar no resto do procedimento", () => {
+    expect(salvarProcedimento({ ...camposDoProcedimento(EXISTENTE), ativo: true }, "p1")).toEqual({});
+    expect(procedimentos.obter("p1")).toEqual({ ...EXISTENTE, ativo: true });
+
+    expect(salvarProcedimento({ ...camposDoProcedimento(OUTRO), ativo: false }, "p2")).toEqual({});
+    expect(procedimentos.obter("p2")).toEqual({ ...OUTRO, ativo: false });
+    expect(procedimentos.listar()).toHaveLength(2);
   });
 
   it("o procedimento pode manter o próprio código ao ser editado", () => {

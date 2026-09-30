@@ -149,6 +149,38 @@ describe("lista de procedimentos", () => {
   });
 });
 
+describe("procedimento inativo", () => {
+  it("continua na lista, marcado como inativo; os ativos não levam a marca", async () => {
+    procedimentos.substituirTudo([PROCEDIMENTOS[0], { ...PROCEDIMENTOS[1], ativo: false }, PROCEDIMENTOS[2]]);
+    await abrir();
+
+    const [profilaxia, restauracao, exodontia] = linhas();
+    expect(linhas()).toHaveLength(3);
+    expect(profilaxia.textContent).toContain("Inativo");
+    expect(restauracao.textContent).not.toContain("Inativo");
+    expect(exodontia.textContent).not.toContain("Inativo");
+  });
+
+  it("desativa e reativa pelo modal de edição, e a lista mostra a mudança", async () => {
+    await abrir();
+    const editar = (nome: string) => fireEvent.click(screen.getByRole("button", { name: `Editar ${nome}` }));
+    const ativo = () => within(screen.getByRole("dialog")).getByLabelText(/procedimento ativo/i);
+    const salvar = () => fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Salvar" }));
+
+    editar("Profilaxia (limpeza)");
+    fireEvent.click(ativo());
+    salvar();
+    expect(linhas()[0].textContent).toContain("Inativo");
+    expect(procedimentos.obter("p2")!.ativo).toBe(false);
+
+    editar("Profilaxia (limpeza)");
+    fireEvent.click(ativo());
+    salvar();
+    expect(linhas()[0].textContent).not.toContain("Inativo");
+    expect(procedimentos.obter("p2")!.ativo).toBe(true);
+  });
+});
+
 describe("reajuste de preços em lote", () => {
   const reajustar = () => screen.getByRole("button", { name: "Reajustar preços" }) as HTMLButtonElement;
   const marcar = (nome: string) => fireEvent.click(screen.getByRole("checkbox", { name: `Selecionar ${nome}` }));
