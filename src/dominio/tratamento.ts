@@ -7,12 +7,12 @@ import type { Face, NumeroDente } from "./odontologia";
  */
 export type SituacaoPlano = "proposto" | "aprovado" | "em-andamento" | "concluido" | "recusado";
 
-/** Um procedimento proposto, ligado a um dente e a uma face quando o procedimento pede. */
+/** Um procedimento proposto, ligado a um dente e às faces que ele pede (uma restauração MOD leva três). */
 export type ItemPlano = {
   id: string;
   procedimentoId: string;
   dente?: NumeroDente;
-  face?: Face;
+  faces?: Face[];
   /** Preço do item quando entrou no plano, copiado do catálogo: reajustar o catálogo depois não muda o que já foi orçado. */
   preco: Centavos;
 };
