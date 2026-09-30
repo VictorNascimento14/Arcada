@@ -33,3 +33,18 @@ export const CONDICOES = [
 ] as const satisfies readonly Condicao[];
 
 export type CondicaoId = (typeof CONDICOES)[number]["id"];
+
+/** Cada condição pelo `id`. */
+export const CONDICAO_POR_ID = Object.fromEntries(CONDICOES.map((c) => [c.id, c])) as Record<CondicaoId, Condicao>;
+
+/** As que se marcam numa face (cárie, restauração e selante); as outras valem no dente inteiro. */
+export type CondicaoDeFace = Extract<(typeof CONDICOES)[number], { escopo: "face" }>["id"];
+export type CondicaoDeDente = Exclude<CondicaoId, CondicaoDeFace>;
+
+export const ehCondicaoDeFace = (id: CondicaoId): id is CondicaoDeFace => CONDICAO_POR_ID[id].escopo === "face";
+
+/** Os grupos em que a legenda e a barra de condições mostram a lista, na ordem em que aparecem. */
+export const GRUPOS_DE_ESCOPO: readonly { escopo: EscopoCondicao; titulo: string }[] = [
+  { escopo: "face", titulo: "Por face" },
+  { escopo: "dente", titulo: "Dente inteiro" },
+];

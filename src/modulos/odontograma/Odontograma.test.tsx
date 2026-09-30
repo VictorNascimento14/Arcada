@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { DENTES_DECIDUOS, DENTES_PERMANENTES } from "@/dominio/fdi";
 
@@ -61,6 +61,20 @@ describe("Odontograma", () => {
 
     linhaMediaEntre("Arcada superior", 11, 21);
     linhaMediaEntre("Arcada inferior", 41, 31);
+  });
+});
+
+describe("Odontograma: marcas", () => {
+  it("leva as marcas e as ações aos dentes, com o número do dente na chamada", () => {
+    const aoFace = vi.fn();
+    const aoDente = vi.fn();
+    render(<Odontograma marcas={[{ dente: 26, face: "D", condicao: "selante" }]} onFace={aoFace} onDente={aoDente} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "face distal do dente 26: selante" }));
+    fireEvent.click(screen.getByRole("button", { name: "dente 36 inteiro" }));
+
+    expect(aoFace).toHaveBeenCalledWith(26, "D");
+    expect(aoDente).toHaveBeenCalledWith(36);
   });
 });
 

@@ -25,14 +25,14 @@ describe("Legenda", () => {
     ]);
   });
 
-  it("dá a cada condição um marcador decorativo, com as classes de cor da própria condição", () => {
+  it("dá a cada condição um ícone decorativo com o símbolo dela, na cor da própria condição", () => {
     render(<Legenda />);
 
-    for (const { rotulo, cor } of CONDICOES) {
-      const marcador = screen.getByText(rotulo).querySelector("span");
-      expect(marcador?.getAttribute("aria-hidden")).toBe("true");
-      expect(marcador?.classList.contains("bg-current")).toBe(true);
-      for (const classe of cor.split(" ")) expect(marcador?.classList.contains(classe)).toBe(true);
+    for (const { id, rotulo, cor } of CONDICOES) {
+      const icone = screen.getByText(rotulo).querySelector("svg");
+      expect(icone?.getAttribute("aria-hidden")).toBe("true");
+      const simbolo = icone?.querySelector(`[data-simbolo="${id}"]`);
+      for (const classe of cor.split(" ")) expect(simbolo?.classList.contains(classe)).toBe(true);
     }
   });
 });

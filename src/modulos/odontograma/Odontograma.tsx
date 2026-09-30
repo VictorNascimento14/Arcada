@@ -1,9 +1,17 @@
 import { useId, useState } from "react";
 
 import { DENTES_DECIDUOS, DENTES_PERMANENTES } from "@/dominio/fdi";
-import type { NumeroDente } from "@/dominio/odontologia";
+import type { Face, NumeroDente } from "@/dominio/odontologia";
 
 import Dente from "./Dente";
+import type { Marca } from "./marcas";
+
+/** As marcas e o que fazer ao clicar numa face ou no número de um dente; sem as ações, o odontograma só mostra. */
+type Props = {
+  marcas?: readonly Marca[];
+  onFace?: (dente: NumeroDente, face: Face) => void;
+  onDente?: (dente: NumeroDente) => void;
+};
 
 /**
  * Uma arcada numa linha só: a metade do lado direito do paciente, a linha média e a metade do esquerdo. As duas
@@ -11,11 +19,11 @@ import Dente from "./Dente";
  * (16 nos permanentes, 10 nos decíduos). Os dentes vêm na ordem em que se desenham (`DENTES_PERMANENTES` e
  * `DENTES_DECIDUOS`): o lado direito do paciente à esquerda de quem olha.
  */
-function Arcada({ nome, dentes }: { nome: string; dentes: readonly NumeroDente[] }) {
+function Arcada({ nome, dentes, marcas, onFace, onDente }: Props & { nome: string; dentes: readonly NumeroDente[] }) {
   const meio = dentes.length / 2;
   const desenho = (n: NumeroDente) => (
     <div key={n} className="w-[var(--dente)] shrink-0">
-      <Dente numero={n} />
+      <Dente numero={n} marcas={marcas} onFace={onFace && ((face) => onFace(n, face))} onNumero={onDente && (() => onDente(n))} />
     </div>
   );
 
@@ -71,7 +79,7 @@ function SeletorDenticao({ escolhida, aoEscolher }: { escolhida: Denticao; aoEsc
  * duas (mista). O tamanho do dente é fixo (`--dente`, maior a partir do `md`); onde a tela não comporta as 16
  * colunas, as arcadas rolam na horizontal em vez de encolher os dentes até não dar para tocar em cada face.
  */
-export default function Odontograma() {
+export default function Odontograma({ marcas, onFace, onDente }: Props) {
   const [denticao, setDenticao] = useState<Denticao>("permanente");
 
   return (
@@ -84,7 +92,14 @@ export default function Odontograma() {
               {ordem
                 .filter((tipo) => denticao === "mista" || denticao === tipo)
                 .map((tipo) => (
-                  <Arcada key={tipo} nome={`Arcada ${arcada}${tipo === "decidua" ? " decídua" : ""}`} dentes={DENTES[tipo][arcada]} />
+                  <Arcada
+                    key={tipo}
+                    nome={`Arcada ${arcada}${tipo === "decidua" ? " decídua" : ""}`}
+                    dentes={DENTES[tipo][arcada]}
+                    marcas={marcas}
+                    onFace={onFace}
+                    onDente={onDente}
+                  />
                 ))}
             </div>
           ))}
