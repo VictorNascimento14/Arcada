@@ -3,8 +3,10 @@
  * que vem), com quem já vem no núcleo — pacientes, profissionais e cadeiras de `src/dados/sementes.ts`.
  * As datas saem de "hoje" na hora de semear, então a agenda tem o que mostrar no dia em que o app abre pela
  * primeira vez. Cada consulta cabe no expediente da clínica de demonstração e nenhuma disputa cadeira ou
- * profissional com outra (o teste confere as duas coisas com as regras da agenda). Os procedimentos ficam
- * de fora: o catálogo tem o semeador dele, e semear por cima o deixaria com a lista curta daqui.
+ * profissional com outra (o teste confere as duas coisas com as regras da agenda). O procedimento de cada uma é
+ * do catálogo padrão (`src/modulos/procedimentos/catalogo.ts`) e o horário é a duração dele arredondada para
+ * cima, de 15 em 15 minutos. A agenda guarda só o id: o catálogo tem o semeador dele, e sem ele o cartão apenas
+ * não mostra o procedimento.
  */
 import { consultas } from "@/dados/colecoes";
 import type { Semeador } from "@/dados/sementes";
@@ -23,21 +25,23 @@ type Modelo = {
   paciente: string;
   profissional: string;
   cadeira: string;
+  /** O `id` do procedimento no catálogo padrão. */
+  procedimento: string;
   /** A situação da consulta que ainda vai acontecer; a de um dia que já passou vira `concluida`. */
   situacao: SituacaoConsulta;
 };
 
 const MODELOS: readonly Modelo[] = [
-  { dia: 0, hora: "08:00", duracaoMin: 45, paciente: "pac-ana", profissional: "prof-exemplo", cadeira: "cadeira-1", situacao: "confirmada" },
-  { dia: 0, hora: "09:30", duracaoMin: 30, paciente: "pac-joao", profissional: "prof-exemplo-2", cadeira: "cadeira-2", situacao: "agendada" },
-  { dia: 1, hora: "08:30", duracaoMin: 60, paciente: "pac-carlos", profissional: "prof-exemplo", cadeira: "cadeira-1", situacao: "confirmada" },
-  { dia: 1, hora: "14:00", duracaoMin: 45, paciente: "pac-luisa", profissional: "prof-exemplo-2", cadeira: "cadeira-2", situacao: "agendada" },
-  { dia: 2, hora: "08:00", duracaoMin: 30, paciente: "pac-helena", profissional: "prof-exemplo", cadeira: "cadeira-1", situacao: "confirmada" },
-  { dia: 2, hora: "08:00", duracaoMin: 60, paciente: "pac-marina", profissional: "prof-exemplo-2", cadeira: "cadeira-2", situacao: "agendada" },
-  { dia: 2, hora: "10:30", duracaoMin: 90, paciente: "pac-sebastiao", profissional: "prof-exemplo", cadeira: "cadeira-1", situacao: "agendada" },
-  { dia: 3, hora: "09:30", duracaoMin: 45, paciente: "pac-exemplo", profissional: "prof-exemplo", cadeira: "cadeira-1", situacao: "confirmada" },
-  { dia: 3, hora: "15:00", duracaoMin: 60, paciente: "pac-ana", profissional: "prof-exemplo-2", cadeira: "cadeira-2", situacao: "agendada" },
-  { dia: 4, hora: "14:30", duracaoMin: 30, paciente: "pac-carlos", profissional: "prof-exemplo", cadeira: "cadeira-1", situacao: "agendada" },
+  { dia: 0, hora: "08:00", duracaoMin: 45, paciente: "pac-ana", profissional: "prof-exemplo", cadeira: "cadeira-1", procedimento: "proc-profilaxia", situacao: "confirmada" },
+  { dia: 0, hora: "09:30", duracaoMin: 30, paciente: "pac-joao", profissional: "prof-exemplo-2", cadeira: "cadeira-2", procedimento: "proc-selante", situacao: "agendada" },
+  { dia: 1, hora: "08:30", duracaoMin: 60, paciente: "pac-carlos", profissional: "prof-exemplo", cadeira: "cadeira-1", procedimento: "proc-restauracao-resina", situacao: "confirmada" },
+  { dia: 1, hora: "14:00", duracaoMin: 45, paciente: "pac-luisa", profissional: "prof-exemplo-2", cadeira: "cadeira-2", procedimento: "proc-restauracao-ionomero", situacao: "agendada" },
+  { dia: 2, hora: "08:00", duracaoMin: 30, paciente: "pac-helena", profissional: "prof-exemplo", cadeira: "cadeira-1", procedimento: "proc-consulta-avaliacao", situacao: "confirmada" },
+  { dia: 2, hora: "08:00", duracaoMin: 60, paciente: "pac-marina", profissional: "prof-exemplo-2", cadeira: "cadeira-2", procedimento: "proc-clareamento-consultorio", situacao: "agendada" },
+  { dia: 2, hora: "10:30", duracaoMin: 90, paciente: "pac-sebastiao", profissional: "prof-exemplo", cadeira: "cadeira-1", procedimento: "proc-canal-unirradicular", situacao: "agendada" },
+  { dia: 3, hora: "09:30", duracaoMin: 45, paciente: "pac-exemplo", profissional: "prof-exemplo", cadeira: "cadeira-1", procedimento: "proc-profilaxia", situacao: "confirmada" },
+  { dia: 3, hora: "15:00", duracaoMin: 60, paciente: "pac-ana", profissional: "prof-exemplo-2", cadeira: "cadeira-2", procedimento: "proc-restauracao-resina", situacao: "agendada" },
+  { dia: 4, hora: "14:30", duracaoMin: 30, paciente: "pac-carlos", profissional: "prof-exemplo", cadeira: "cadeira-1", procedimento: "proc-consulta-avaliacao", situacao: "agendada" },
 ];
 
 /** A segunda-feira da semana de `hoje`; sábado e domingo já olham para a semana seguinte. */
@@ -65,6 +69,7 @@ export const semeador: Semeador = {
             pacienteId: m.paciente,
             profissionalId: m.profissional,
             cadeiraId: m.cadeira,
+            procedimentoId: m.procedimento,
             inicio: `${dia}T${m.hora}`,
             duracaoMin: m.duracaoMin,
             situacao: jaPassou ? "concluida" : m.situacao,

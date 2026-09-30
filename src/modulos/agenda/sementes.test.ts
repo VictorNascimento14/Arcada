@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { cadeiras, clinica, CLINICA_ID, consultas, pacientes, profissionais } from "@/dados/colecoes";
 import { semeadorDoNucleo } from "@/dados/sementes";
+import { CATALOGO } from "../procedimentos/catalogo";
 import { conflitosDaConsulta } from "./conflitos";
 import { horariosLivres } from "./horarios";
 import { semeador } from "./sementes";
@@ -55,6 +56,16 @@ describe("sementes da agenda", () => {
       expect(pacientes.obter(c.pacienteId), c.id).toBeDefined();
       expect(profissionais.obter(c.profissionalId), c.id).toBeDefined();
       expect(cadeiras.obter(c.cadeiraId), c.id).toBeDefined();
+    }
+  });
+
+  it("cada consulta traz um procedimento do catálogo padrão, e o horário é a duração dele em passos de 15 minutos", () => {
+    semearEm("2026-09-30");
+
+    for (const c of consultas.listar()) {
+      const p = CATALOGO.find((x) => x.id === c.procedimentoId);
+      expect(p, c.id).toBeDefined();
+      expect(c.duracaoMin, c.id).toBe(Math.ceil(p!.duracaoMin / 15) * 15);
     }
   });
 
