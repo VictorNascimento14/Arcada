@@ -64,6 +64,14 @@ describe("tela do atendimento", () => {
     expect(screen.getByText("Em atendimento")).toBeTruthy();
   });
 
+  it("o cartão de procedimentos realizados só aparece com a consulta em atendimento", () => {
+    abrir();
+    expect(screen.queryByText("Procedimentos realizados")).toBeNull();
+
+    fireEvent.click(iniciar()!);
+    expect(screen.getByText("Procedimentos realizados")).toBeTruthy();
+  });
+
   it.each<SituacaoConsulta>(["em-atendimento", "concluida", "faltou", "cancelada"])("consulta %s não oferece iniciar", (situacao) => {
     consultas.substituirTudo([consulta(situacao)]);
     abrir();
