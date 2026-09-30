@@ -3,7 +3,7 @@
  * locais), nunca somando milissegundos: o dia seguinte é sempre o dia seguinte, com ou sem horário de verão.
  * `toISOString()` fica de fora: ele converte para UTC e, à noite no Brasil, já devolve o dia seguinte.
  */
-import type { DataISO } from "@/dominio";
+import type { Consulta, DataISO } from "@/dominio";
 import { diaISO } from "@/ui";
 
 const paraData = (dia: DataISO, somaDias = 0) =>
@@ -15,3 +15,7 @@ export const somarDias = (dia: DataISO, n: number): DataISO => diaISO(paraData(d
 /** O dia por extenso, para o título da tela: `quarta-feira, 30 de setembro de 2026`. */
 export const rotuloDoDia = (dia: DataISO): string =>
   paraData(dia).toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+
+/** Os dias que têm consulta na grade, em ordem e sem repetir: a cancelada libera o horário e não conta. */
+export const diasComConsulta = (consultas: readonly Consulta[]): DataISO[] =>
+  [...new Set(consultas.filter((c) => c.situacao !== "cancelada").map((c) => c.inicio.slice(0, 10)))].sort();

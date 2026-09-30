@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { rotuloDoDia, somarDias } from "./dias";
+import type { Consulta } from "@/dominio";
+
+import { diasComConsulta, rotuloDoDia, somarDias } from "./dias";
 
 describe("somarDias", () => {
   it("anda para a frente e para trás dentro do mês", () => {
@@ -35,5 +37,35 @@ describe("rotuloDoDia", () => {
 
   it("não põe zero à esquerda no dia do mês", () => {
     expect(rotuloDoDia("2026-01-01")).toBe("quinta-feira, 1 de janeiro de 2026");
+  });
+});
+
+describe("diasComConsulta", () => {
+  const consulta = (id: string, inicio: string, situacao: Consulta["situacao"] = "agendada"): Consulta => ({
+    id, pacienteId: "a1", profissionalId: "p1", cadeiraId: "c1", inicio, duracaoMin: 30, situacao,
+  });
+
+  it("lista cada dia uma vez só, em ordem", () => {
+    const dias = diasComConsulta([
+      consulta("1", "2026-10-01T09:00"),
+      consulta("2", "2026-09-15T14:00"),
+      consulta("3", "2026-10-01T15:30"),
+    ]);
+
+    expect(dias).toEqual(["2026-09-15", "2026-10-01"]);
+  });
+
+  it("a cancelada não conta, a menos que o dia tenha outra consulta", () => {
+    const dias = diasComConsulta([
+      consulta("1", "2026-09-16T09:00", "cancelada"),
+      consulta("2", "2026-09-17T09:00", "cancelada"),
+      consulta("3", "2026-09-17T10:00", "faltou"),
+    ]);
+
+    expect(dias).toEqual(["2026-09-17"]); // a que faltou continua na grade
+  });
+
+  it("sem consulta, nenhum dia", () => {
+    expect(diasComConsulta([])).toEqual([]);
   });
 });
