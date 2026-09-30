@@ -11,4 +11,6 @@ export type Paciente = {
   email?: string;
   /** Nome do convênio; ausente é paciente particular. */
   convenio?: string;
+  /** Anotação livre do cadastro, em texto corrido. */
+  observacoes?: string;
 };
