@@ -13,10 +13,14 @@ const PASSO_MIN = 15;
 
 const FORMATO_DIA = /^\d{4}-\d{2}-\d{2}$/;
 
-const emMinutos = (hora: HoraISO) => Number(hora.slice(0, 2)) * 60 + Number(hora.slice(3, 5));
+export const emMinutos = (hora: HoraISO) => Number(hora.slice(0, 2)) * 60 + Number(hora.slice(3, 5));
 
-const emHora = (min: number): HoraISO =>
+export const emHora = (min: number): HoraISO =>
   `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
+
+/** O dia da semana de `dia` (`AAAA-MM-DD`), sem fuso: 0 é domingo. */
+export const diaDaSemana = (dia: DataISO): DiaDaSemana =>
+  new Date(Date.UTC(Number(dia.slice(0, 4)), Number(dia.slice(5, 7)) - 1, Number(dia.slice(8, 10)))).getUTCDay() as DiaDaSemana;
 
 /**
  * Os inícios livres (`HH:mm`, em ordem) de uma consulta de `duracaoMin` minutos em `dia`
@@ -35,9 +39,6 @@ export function horariosLivres(
   duracaoMin: number,
 ): HoraISO[] {
   if (!FORMATO_DIA.test(dia) || !(duracaoMin > 0)) return [];
-  const diaDaSemana = new Date(
-    Date.UTC(Number(dia.slice(0, 4)), Number(dia.slice(5, 7)) - 1, Number(dia.slice(8, 10))),
-  ).getUTCDay() as DiaDaSemana;
 
   // ponytail: a consulta que passa da meia-noite não ocupa o dia seguinte, e o expediente também não
   // cruza a meia-noite. Com plantão noturno, comparar em minutos corridos por `Date.UTC`.
@@ -48,7 +49,7 @@ export function horariosLivres(
   });
 
   const livres: HoraISO[] = [];
-  for (const faixa of expediente[diaDaSemana]) {
+  for (const faixa of expediente[diaDaSemana(dia)]) {
     const fechamento = emMinutos(faixa.fim);
     for (let inicio = emMinutos(faixa.inicio); inicio + duracaoMin <= fechamento; inicio += PASSO_MIN) {
       const fim = inicio + duracaoMin;

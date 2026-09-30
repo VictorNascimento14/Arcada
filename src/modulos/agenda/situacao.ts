@@ -29,3 +29,13 @@ export function transicoesDe(situacao: SituacaoConsulta): readonly SituacaoConsu
 export function podeTransitar(de: SituacaoConsulta, para: SituacaoConsulta): boolean {
   return TRANSICOES[de].includes(para);
 }
+
+/** O nome da situação como aparece na tela. */
+export const ROTULO_DA_SITUACAO: Record<SituacaoConsulta, string> = {
+  agendada: "Agendada",
+  confirmada: "Confirmada",
+  "em-atendimento": "Em atendimento",
+  concluida: "Concluída",
+  faltou: "Faltou",
+  cancelada: "Cancelada",
+};
