@@ -29,11 +29,18 @@ export type Clinica = {
 export type Profissional = {
   id: string;
   nome: string;
-  /** Registro no CRO com a sigla do estado (`CRO-UF 00000` no exemplo). Validação: item 5.6. */
+  /** Registro no CRO com a sigla do estado (`CRO-SP 00000`); o formato se confere em `modulos/clinica/cro.ts`. */
   cro: string;
+  /** Área de atuação, em texto livre (ex.: `Endodontia`). */
+  especialidade?: string;
   /** Cor do profissional na agenda, em CSS (ex.: `#0f766e`). Vai num `style`: classe do Tailwind montada em runtime não existe. */
   cor: string;
+  /** Inativo continua no histórico, mas some das escolhas. Sem o campo conta como ativo: use `profissionalAtivo`. */
+  ativo?: boolean;
 };
+
+/** Ativo é o padrão: o profissional sem o campo (semente, dado gravado antes dele existir) está ativo. */
+export const profissionalAtivo = (p: Pick<Profissional, "ativo">): boolean => p.ativo !== false;
 
 /** Posto de atendimento — a cadeira com o seu equipamento. A agenda é organizada por ela. */
 export type Cadeira = {
